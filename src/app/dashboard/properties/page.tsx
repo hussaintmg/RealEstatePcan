@@ -3,7 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DataGrid, ColumnDef } from '@/components/datagrid/DataGrid';
 import { DirectUploader } from '@/components/common/DirectUploader';
-import { Plus, X, Building, Check, Loader2 } from 'lucide-react';
+import { Plus, Building, Check } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 
 export default function PropertiesDashboardPage() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -166,24 +169,23 @@ export default function PropertiesDashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Properties &amp; 3D PlayCanvas Models
-          </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Strict 20-row backend pagination with persistent cross-page selection and bulk execution.
-          </p>
-        </div>
-
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/30 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Property Listing</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Properties & 3D PlayCanvas Models"
+        description="Strict 20-row backend pagination with persistent cross-page selection and bulk execution."
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Properties' },
+        ]}
+        primaryAction={
+          <Button
+            variant="primary"
+            onClick={() => setIsModalOpen(true)}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            New Property Listing
+          </Button>
+        }
+      />
 
       <DataGrid
         title="Active Catalog"
@@ -220,128 +222,120 @@ export default function PropertiesDashboardPage() {
       />
 
       {/* New Property Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl bg-[#101522] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 my-8">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <h3 className="text-base font-bold text-white">Create New Real Estate Listing</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Create New Real Estate Listing"
+        description="Publish residential or commercial property listing with optional 3D asset"
+        size="lg"
+      >
+        <form onSubmit={handleCreateProperty} className="space-y-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-300 mb-1">Title</label>
+              <input
+                type="text"
+                required
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="The Skyview Horizon Villa"
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500/50"
+              />
             </div>
 
-            <form onSubmit={handleCreateProperty} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-300 mb-1">Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    placeholder="The Skyview Horizon Villa"
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500/50"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1">Price ($)</label>
-                  <input
-                    type="number"
-                    required
-                    value={form.price}
-                    onChange={(e) => setForm({ ...form, price: e.target.value })}
-                    placeholder="1850000"
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500/50"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-slate-300 mb-1">Property Type</label>
-                  <select
-                    value={form.propertyType}
-                    onChange={(e) => setForm({ ...form, propertyType: e.target.value })}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500/50"
-                  >
-                    <option value="Villa">Villa</option>
-                    <option value="Penthouse">Penthouse</option>
-                    <option value="Apartment">Apartment</option>
-                    <option value="Commercial">Commercial</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1">City</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500/50"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1">Address</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500/50"
-                  />
-                </div>
-              </div>
-
-              {/* Direct 3D Model Uploader */}
-              <div>
-                <label className="block text-slate-300 mb-1">
-                  Upload PlayCanvas 3D Model (.glb / .gltf)
-                </label>
-                <DirectUploader
-                  folder="models"
-                  accept=".glb,.gltf"
-                  label="Upload 3D Architectural GLB Model (Direct Bufferless Upload)"
-                  onUploadComplete={(url) => setForm({ ...form, model3dUrl: url })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-1">Description</label>
-                <textarea
-                  rows={3}
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Architectural features, finishes, panoramic views..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-blue-500/50 resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-600/30 transition-all flex items-center space-x-2"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Publish Listing</span>}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="block text-slate-300 mb-1">Price ($)</label>
+              <input
+                type="number"
+                required
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                placeholder="1850000"
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500/50"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-slate-300 mb-1">Property Type</label>
+              <select
+                value={form.propertyType}
+                onChange={(e) => setForm({ ...form, propertyType: e.target.value })}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500/50"
+              >
+                <option value="Villa">Villa</option>
+                <option value="Penthouse">Penthouse</option>
+                <option value="Apartment">Apartment</option>
+                <option value="Commercial">Commercial</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1">City</label>
+              <input
+                type="text"
+                required
+                value={form.city}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500/50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1">Address</label>
+              <input
+                type="text"
+                required
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500/50"
+              />
+            </div>
+          </div>
+
+          {/* Direct 3D Model Uploader */}
+          <div>
+            <label className="block text-slate-300 mb-1">
+              Upload PlayCanvas 3D Model (.glb / .gltf)
+            </label>
+            <DirectUploader
+              folder="models"
+              accept=".glb,.gltf"
+              label="Upload 3D Architectural GLB Model (Direct Bufferless Upload)"
+              onUploadComplete={(url) => setForm({ ...form, model3dUrl: url })}
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-300 mb-1">Description</label>
+            <textarea
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Architectural features, finishes, panoramic views..."
+              className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-blue-500/50 resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
+            <Button
+              variant="ghost"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              loading={saving}
+              loadingText="Publishing..."
+            >
+              Publish Listing
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

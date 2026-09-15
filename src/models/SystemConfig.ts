@@ -23,7 +23,25 @@ export interface ISystemFeatures {
   realtimeAuditLogs: boolean;
 }
 
+export interface ISystemBranding {
+  websiteName: string;
+  headerLogo: string;
+  footerLogo: string;
+  favicon: string;
+  headerLogoLight?: string;
+  headerLogoDark?: string;
+  footerLogoLight?: string;
+  footerLogoDark?: string;
+}
+
 export interface ISystemConfig extends Document {
+  singletonKey?: string;
+  setupCompleted: boolean;
+  setupVersion: string;
+  setupCompletedAt?: Date;
+  developerUserId?: mongoose.Types.ObjectId;
+  ownerUserId?: mongoose.Types.ObjectId;
+  branding: ISystemBranding;
   features: ISystemFeatures;
   storageProvider: 'supabase' | 'local';
   supabaseConfig: {
@@ -34,11 +52,28 @@ export interface ISystemConfig extends Document {
   };
   aiProviders: IAiProviderConfig[];
   updatedBy?: mongoose.Types.ObjectId;
+  createdAt: Date;
   updatedAt: Date;
 }
 
 const SystemConfigSchema = new Schema<ISystemConfig>(
   {
+    singletonKey: { type: String, default: 'PRIMARY_SYSTEM_CONFIG', unique: true },
+    setupCompleted: { type: Boolean, default: false, index: true },
+    setupVersion: { type: String, default: '1.0.0' },
+    setupCompletedAt: { type: Date },
+    developerUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+    ownerUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+    branding: {
+      websiteName: { type: String, default: 'Aura Heights Luxury Estates', trim: true },
+      headerLogo: { type: String, default: '' },
+      footerLogo: { type: String, default: '' },
+      favicon: { type: String, default: '/favicon.ico' },
+      headerLogoLight: { type: String, default: '' },
+      headerLogoDark: { type: String, default: '' },
+      footerLogoLight: { type: String, default: '' },
+      footerLogoDark: { type: String, default: '' },
+    },
     features: {
       globalSearch: { type: Boolean, default: true },
       aiAssistant: { type: Boolean, default: true },
@@ -77,6 +112,17 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
   },
   { timestamps: true }
 );
+
+// Pre-save singleton validation: prevent duplicate system config records
+SystemConfigSchema.pre<ISystemConfig>('save', async function (next) {
+  const existing = await (this.constructor as Model<ISystemConfig>).findOne({
+    _id: { $ne: this._id },
+  });
+  if (existing) {
+    return next(new Error('Only one persistent SystemConfig document is permitted in the database.'));
+  }
+  next();
+});
 
 export const SystemConfig: Model<ISystemConfig> =
   mongoose.models.SystemConfig || mongoose.model<ISystemConfig>('SystemConfig', SystemConfigSchema);

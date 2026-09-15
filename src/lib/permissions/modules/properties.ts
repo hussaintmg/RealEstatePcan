@@ -1,0 +1,57 @@
+import { PermissionDefinition } from '../types';
+
+export const propertyPermissions: PermissionDefinition[] = [
+  {
+    key: 'property.list',
+    module: 'properties',
+    label: 'List Properties',
+    description: 'View the directory and summaries of real estate developments and listings.',
+    type: 'read',
+    supportedScopes: ['own', 'assigned', 'all'],
+    defaultScope: 'all',
+  },
+  {
+    key: 'property.view',
+    module: 'properties',
+    label: 'View Property Details',
+    description: 'Inspect full property specifications, 3D floorplans, and unit inventories.',
+    type: 'read',
+    supportedScopes: ['own', 'assigned', 'all'],
+    defaultScope: 'all',
+  },
+  {
+    key: 'property.create',
+    module: 'properties',
+    label: 'Create Property',
+    description: 'Add new properties, configure 3D models, and define unit matrices.',
+    type: 'write',
+    dependencies: ['property.view'],
+  },
+  {
+    key: 'property.edit',
+    module: 'properties',
+    label: 'Edit Property',
+    description: 'Update property pricing, specifications, gallery assets, and availability.',
+    type: 'write',
+    supportedScopes: ['own', 'assigned', 'all'],
+    defaultScope: 'all',
+    dependencies: ['property.view'],
+  },
+  {
+    key: 'property.archive',
+    module: 'properties',
+    label: 'Archive Property',
+    description: 'Deactivate or unpublish properties from public visibility.',
+    type: 'write',
+    dangerous: true,
+    dependencies: ['property.edit'],
+  },
+  {
+    key: 'property.publish',
+    module: 'properties',
+    label: 'Publish Property',
+    description: 'Make property listings publicly visible on the main website.',
+    type: 'action',
+    dependencies: ['property.edit'],
+  },
+];

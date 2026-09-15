@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 import { DynamicCmsIcon } from '@/lib/cms/iconResolver';
 import {
   Building2,
@@ -25,6 +26,7 @@ export const DynamicCmsFooter: React.FC<DynamicFooterProps> = ({
   initialLayout,
   initialTheme,
 }) => {
+  const { branding } = useAuth();
   const [layout, setLayout] = useState<any>(initialLayout || null);
   const [theme, setTheme] = useState<any>(initialTheme || null);
 
@@ -53,11 +55,11 @@ export const DynamicCmsFooter: React.FC<DynamicFooterProps> = ({
   }, [layout, theme]);
 
   const logoText =
-    layout?.content?.logo?.text || theme?.brand?.companyName || 'SKYLINE RESIDENCES';
+    layout?.content?.logo?.text || branding?.websiteName || theme?.brand?.companyName || 'Aura Heights Luxury Estates';
   const logoSubtext =
     layout?.content?.logo?.subtext || theme?.brand?.tagline || 'Signature 3D Living';
   const logoIcon = layout?.content?.logo?.icon || 'Building2';
-  const logoUrl = layout?.content?.logo?.url || theme?.brand?.footerLogo || theme?.brand?.logoPrimary || '';
+  const logoUrl = layout?.content?.logo?.url || branding?.footerLogo || theme?.brand?.footerLogo || theme?.brand?.logoPrimary || '';
 
   const columns = layout?.content?.columns || [
     {

@@ -29,7 +29,7 @@ export const DynamicCmsNavbar: React.FC<DynamicNavbarProps> = ({
   initialTheme,
 }) => {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, branding } = useAuth();
   const { isAllowed } = useFeatureFlags();
 
   const [layout, setLayout] = useState<any>(initialLayout || null);
@@ -72,11 +72,11 @@ export const DynamicCmsNavbar: React.FC<DynamicNavbarProps> = ({
 
   // Sensible defaults if layout hasn't loaded or is empty
   const logoText =
-    layout?.content?.logo?.text || theme?.brand?.companyName || 'SKYLINE RESIDENCES';
+    layout?.content?.logo?.text || branding?.websiteName || theme?.brand?.companyName || 'Aura Heights Luxury Estates';
   const logoSubtext =
     layout?.content?.logo?.subtext || theme?.brand?.tagline || 'Signature 3D Living';
   const logoIcon = layout?.content?.logo?.icon || 'Building2';
-  const logoUrl = layout?.content?.logo?.url || theme?.brand?.logoPrimary || '';
+  const logoUrl = layout?.content?.logo?.url || branding?.headerLogo || theme?.brand?.logoPrimary || '';
 
   const menuItems = layout?.content?.menuItems || [
     { id: 'm1', label: 'Home', url: '/', target: '_self' },

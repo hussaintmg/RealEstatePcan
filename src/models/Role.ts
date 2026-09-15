@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import { DataScope } from '../lib/permissions/types';
 
 export type DataScopeType = 'own_data' | 'selected_roles' | 'selected_users' | 'all_data';
 
@@ -13,6 +14,12 @@ export interface IPagePermission {
   send_whatsapp: boolean;
 }
 
+export interface IRoleCapability {
+  key: string;
+  enabled: boolean;
+  scope?: DataScope;
+}
+
 export interface IRole extends Document {
   name: string;
   description?: string;
@@ -21,6 +28,10 @@ export interface IRole extends Document {
   allowedRoleIds?: mongoose.Types.ObjectId[];
   allowedUserIds?: mongoose.Types.ObjectId[];
   permissions: IPagePermission[];
+  capabilities: IRoleCapability[];
+  isSystem?: boolean;
+  status: 'active' | 'archived';
+  version: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,9 +60,33 @@ const RoleSchema = new Schema<IRole>(
         send_whatsapp: { type: Boolean, default: false },
       },
     ],
+    capabilities: [
+      {
+        key: { type: String, required: true },
+        enabled: { type: Boolean, default: false },
+        scope: {
+          type: String,
+          enum: ['own', 'assigned', 'team', 'all'],
+          default: 'all',
+        },
+      },
+    ],
+    isSystem: { type: Boolean, default: false },
+    status: { type: String, enum: ['active', 'archived'], default: 'active', index: true },
+    version: { type: Number, default: 1 },
   },
   { timestamps: true }
 );
+
+// Auto-increment version on updates to trigger cache invalidation
+RoleSchema.pre<IRole>('save', function (next) {
+  if (!this.isNew) {
+    if (this.isModified('capabilities') || this.isModified('permissions') || this.isModified('dataScope')) {
+      this.version = (this.version || 0) + 1;
+    }
+  }
+  next();
+});
 
 export const Role: Model<IRole> =
   mongoose.models.Role || mongoose.model<IRole>('Role', RoleSchema);

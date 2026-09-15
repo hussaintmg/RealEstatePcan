@@ -32,11 +32,10 @@ export const FeatureFlagsProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const refreshFlags = async () => {
     try {
-      const res = await fetch('/api/developer/config');
+      const res = await fetch('/api/auth/bootstrap', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.features) setFeatures(data.features);
-        else if (data.config?.features) setFeatures(data.config.features);
         if (data.storageProvider) setStorageProvider(data.storageProvider);
       }
     } catch {

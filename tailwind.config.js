@@ -25,6 +25,27 @@ module.exports = {
       backdropBlur: {
         xs: '2px',
       },
+      height: {
+        'screen-dvh': '100dvh',
+      },
+      minHeight: {
+        'screen-dvh': '100dvh',
+      },
+      maxHeight: {
+        'screen-dvh': '100dvh',
+      },
+      zIndex: {
+        sticky: '20',
+        sidebar: '30',
+        topbar: '30',
+        dropdown: '40',
+        'drawer-backdrop': '45',
+        drawer: '50',
+        'modal-backdrop': '60',
+        modal: '70',
+        toast: '80',
+        tooltip: '90',
+      },
     },
   },
   plugins: [],
