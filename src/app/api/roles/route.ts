@@ -4,7 +4,7 @@ import { Role } from '@/models/Role';
 import { User } from '@/models/User';
 import { connectToDatabase } from '@/lib/db';
 import { recordAuditEvent, computeSafeDiff } from '@/lib/auditLogger';
-import { can } from '@/lib/rbac';
+import { can, invalidateRoleCache } from '@/lib/rbac';
 import { validateAndNormalizeAssignments } from '@/lib/permissions/registry';
 
 export const dynamic = 'force-dynamic';
@@ -98,6 +98,8 @@ export async function POST(req: NextRequest) {
       status: body.status || 'active',
       isSystem: false,
     });
+
+    invalidateRoleCache();
 
     recordAuditEvent({
       actorUserId: authRes.user.userId,

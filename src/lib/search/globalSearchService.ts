@@ -1,5 +1,6 @@
 import { TokenPayload } from '../auth';
 import { getUserRole, can, applyDataScope } from '../rbac';
+import { getCachedSystemFeatures } from '../authGuard';
 import { Property } from '../../models/Property';
 import { Lead } from '../../models/Lead';
 import { Customer } from '../../models/Customer';
@@ -18,6 +19,7 @@ export interface SearchProviderDefinition {
   category: 'Property' | 'Lead' | 'Customer' | 'Invoice';
   requiredPermission: string;
   requiredFeature?: string;
+  scopeResolver: (user: TokenPayload, role: any) => Promise<Record<string, any>>;
   resolver: (queryRegex: RegExp, user: TokenPayload, role: any) => Promise<SearchResultItem[]>;
 }
 
@@ -25,6 +27,9 @@ export const SEARCH_PROVIDERS: SearchProviderDefinition[] = [
   {
     category: 'Property',
     requiredPermission: 'property.list',
+    scopeResolver: async (user, role) => {
+      return applyDataScope({}, user, role, 'property.list');
+    },
     resolver: async (regex, user, role) => {
       const scopeFilter = await applyDataScope(
         {
@@ -52,6 +57,9 @@ export const SEARCH_PROVIDERS: SearchProviderDefinition[] = [
   {
     category: 'Lead',
     requiredPermission: 'lead.list',
+    scopeResolver: async (user, role) => {
+      return applyDataScope({}, user, role, 'lead.list');
+    },
     resolver: async (regex, user, role) => {
       const scopeFilter = await applyDataScope(
         {
@@ -74,6 +82,10 @@ export const SEARCH_PROVIDERS: SearchProviderDefinition[] = [
   {
     category: 'Customer',
     requiredPermission: 'customer.list',
+    requiredFeature: 'customerPortal',
+    scopeResolver: async (user, role) => {
+      return applyDataScope({}, user, role, 'customer.list');
+    },
     resolver: async (regex, user, role) => {
       const scopeFilter = await applyDataScope(
         {
@@ -96,6 +108,9 @@ export const SEARCH_PROVIDERS: SearchProviderDefinition[] = [
   {
     category: 'Invoice',
     requiredPermission: 'invoice.list',
+    scopeResolver: async (user, role) => {
+      return applyDataScope({}, user, role, 'invoice.list');
+    },
     resolver: async (regex, user, role) => {
       const scopeFilter = await applyDataScope(
         {
@@ -125,11 +140,23 @@ export async function executeGlobalSearch(
   const trimmed = query.trim();
   if (!trimmed) return [];
 
+  // Check global search feature toggle
+  const features = await getCachedSystemFeatures();
+  if (features.globalSearch === false) {
+    return [];
+  }
+
   const role = await getUserRole(user.roleId);
   const regex = new RegExp(trimmed, 'i');
   const results: SearchResultItem[] = [];
 
   for (const provider of SEARCH_PROVIDERS) {
+    // 1. Feature Flag check
+    if (provider.requiredFeature && features[provider.requiredFeature] === false) {
+      continue;
+    }
+
+    // 2. Capability Permission check
     if (can(user, role, provider.requiredPermission)) {
       const categoryResults = await provider.resolver(regex, user, role);
       results.push(...categoryResults);

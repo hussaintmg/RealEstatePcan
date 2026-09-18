@@ -8,6 +8,11 @@ import {
   Home,
   Users,
   FileText,
+  Globe,
+  Sparkles,
+  Calendar,
+  Briefcase,
+  CreditCard,
 } from 'lucide-react';
 import { NavigationSection, NavigationItem, NavigationFilterContext } from './types';
 
@@ -25,6 +30,22 @@ export const DASHBOARD_NAVIGATION: NavigationSection[] = [
         badge: 'MASTER',
         exactMatch: true,
         requiredRole: 'developer',
+      },
+      {
+        id: 'dev-pages',
+        label: 'Public Page Manager',
+        href: '/dashboard/website/cms/pages',
+        icon: Globe,
+        requiredRole: 'developer',
+        requiredFeature: 'cms',
+      },
+      {
+        id: 'dev-studio',
+        label: 'Section Studio',
+        href: '/dashboard/website/cms/components/studio',
+        icon: Sparkles,
+        requiredRole: 'developer',
+        requiredFeature: 'custom_section_studio',
       },
       {
         id: 'dev-cms',
@@ -49,6 +70,20 @@ export const DASHBOARD_NAVIGATION: NavigationSection[] = [
         icon: UserCheck,
         requiredRole: 'developer',
       },
+      {
+        id: 'dev-users',
+        label: 'Users & Access Control',
+        href: '/dashboard/users',
+        icon: Users,
+        requiredRole: 'developer',
+      },
+      {
+        id: 'dev-audit',
+        label: 'Security & Mutation Audit',
+        href: '/dashboard/owner/audit-feed',
+        icon: ShieldAlert,
+        requiredRole: 'developer',
+      },
     ],
   },
   {
@@ -62,6 +97,13 @@ export const DASHBOARD_NAVIGATION: NavigationSection[] = [
         href: '/dashboard/owner',
         icon: Activity,
         exactMatch: true,
+        requiredRole: 'owner',
+      },
+      {
+        id: 'owner-users',
+        label: 'Staff Access & Team',
+        href: '/dashboard/users',
+        icon: Users,
         requiredRole: 'owner',
       },
       {
@@ -101,11 +143,32 @@ export const DASHBOARD_NAVIGATION: NavigationSection[] = [
         requiredPermission: 'customer.list',
       },
       {
+        id: 'ops-deals',
+        label: 'Deals & Contracts',
+        href: '/dashboard/deals',
+        icon: Briefcase,
+        requiredPermission: 'deal.list',
+      },
+      {
+        id: 'ops-appointments',
+        label: 'Appointments & Viewings',
+        href: '/dashboard/appointments',
+        icon: Calendar,
+        requiredPermission: 'lead.view',
+      },
+      {
         id: 'ops-invoices',
-        label: 'Invoices & Milestones',
+        label: 'Invoices & Demands',
         href: '/dashboard/invoices',
         icon: FileText,
         requiredPermission: 'invoice.list',
+      },
+      {
+        id: 'ops-payments',
+        label: 'Payment Ledger',
+        href: '/dashboard/payments',
+        icon: CreditCard,
+        requiredPermission: 'invoice.view',
       },
     ],
   },

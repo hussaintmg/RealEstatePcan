@@ -5,7 +5,8 @@ export interface PaginateOptions {
   limit?: number;
   filter?: Record<string, any>;
   sort?: Record<string, 1 | -1>;
-  populate?: string | string[];
+  populate?: any;
+  select?: string | string[] | Record<string, number | boolean>;
 }
 
 export interface PaginatedResult<T> {
@@ -27,14 +28,18 @@ export async function paginateQuery<T>(
 
   const skip = (page - 1) * limit;
 
+  let query = model
+    .find(filter)
+    .sort(sort)
+    .skip(skip)
+    .limit(limit);
+
+  if (options.select) {
+    query = query.select(options.select as any);
+  }
+
   const [items, totalItems] = await Promise.all([
-    model
-      .find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .populate(options.populate as any)
-      .lean(),
+    query.populate(options.populate as any).lean(),
     model.countDocuments(filter),
   ]);
 

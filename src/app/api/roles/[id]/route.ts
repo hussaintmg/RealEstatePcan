@@ -5,7 +5,7 @@ import { Role } from '@/models/Role';
 import { User } from '@/models/User';
 import { connectToDatabase } from '@/lib/db';
 import { recordAuditEvent, computeSafeDiff } from '@/lib/auditLogger';
-import { can } from '@/lib/rbac';
+import { can, invalidateRoleCache } from '@/lib/rbac';
 import { validateAndNormalizeAssignments } from '@/lib/permissions/registry';
 
 export const dynamic = 'force-dynamic';
@@ -102,6 +102,7 @@ export async function PUT(
 
   existingRole.version = (existingRole.version || 1) + 1;
   await existingRole.save();
+  invalidateRoleCache(id);
 
   const afterSnapshot = {
     name: existingRole.name,
@@ -176,6 +177,7 @@ export async function DELETE(
   if (archiveOnly) {
     role.status = 'archived';
     await role.save();
+    invalidateRoleCache(id);
 
     recordAuditEvent({
       actorUserId: authRes.user.userId,
@@ -195,6 +197,7 @@ export async function DELETE(
   }
 
   await Role.findByIdAndDelete(id);
+  invalidateRoleCache(id);
 
   recordAuditEvent({
     actorUserId: authRes.user.userId,

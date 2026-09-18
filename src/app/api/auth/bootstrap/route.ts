@@ -74,9 +74,13 @@ export async function GET() {
       effectiveScopes[p.key] = 'all';
     }
   } else if (user.isOwner) {
-    // Owner gets all operational capability keys except system.configure
+    // Owner has broad access across the workspace/agency, but is strictly excluded from developer platform controls
+    const DEVELOPER_PLATFORM_CAPS = new Set([
+      'system.configure',
+      'feature_flags.manage',
+    ]);
     for (const p of PERMISSION_REGISTRY) {
-      if (p.key !== 'system.configure') {
+      if (!DEVELOPER_PLATFORM_CAPS.has(p.key) && !p.key.startsWith('developer_settings')) {
         effectivePermissions.push(p.key);
         effectiveScopes[p.key] = 'all';
       }

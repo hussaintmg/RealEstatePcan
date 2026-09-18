@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireDeveloper, standardError } from '@/lib/authGuard';
+import { requireDeveloper, standardError, invalidateFeatureCache } from '@/lib/authGuard';
 import { SystemConfig } from '@/models/SystemConfig';
 import { connectToDatabase } from '@/lib/db';
 import { recordAuditEvent, computeSafeDiff } from '@/lib/auditLogger';
@@ -88,6 +88,7 @@ export async function PUT(req: NextRequest) {
     config.updatedBy = user.userId as any;
 
     await config.save();
+    invalidateFeatureCache();
 
     const afterSnapshot = {
       features: config.features ? JSON.parse(JSON.stringify(config.features)) : {},

@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireUser, standardError } from '@/lib/authGuard';
 import { getSessionUser } from '@/lib/auth';
-import { getUserRole, hasPermission, applyDataScope } from '@/lib/rbac';
+import { can, applyDataScope, getUserRole } from '@/lib/rbac';
 import { Lead } from '@/models/Lead';
 import { paginateQuery } from '@/lib/datagrid/paginateQuery';
 import { connectToDatabase } from '@/lib/db';
-import { recordAuditEvent } from '@/lib/auditLogger';
+import { recordAuditEvent, computeSafeDiff } from '@/lib/auditLogger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
-  await connectToDatabase();
+  const authRes = await requireUser();
+  if (authRes.error) return authRes.error;
 
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const role = await getUserRole(user.roleId);
-  if (!hasPermission(user, role, 'leads', 'read')) {
-    return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+  const { user, role } = authRes;
+  if (!can(user, role, 'lead.list')) {
+    return standardError('RBAC_FORBIDDEN', 'Permission denied: lead.list required', 403);
   }
 
+  await connectToDatabase();
   const { searchParams } = req.nextUrl;
   const page = parseInt(searchParams.get('page') || '1', 10);
   const search = searchParams.get('search') || '';
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   }
   if (status) baseFilter.status = status;
 
-  const finalFilter = await applyDataScope(baseFilter, user, role);
+  const finalFilter = await applyDataScope(baseFilter, user, role, 'lead.list');
 
   const result = await paginateQuery(Lead, {
     page,
@@ -45,12 +45,15 @@ export async function GET(req: NextRequest) {
   });
 
   recordAuditEvent({
+    actorUserId: user.userId,
+    actorEmail: user.email,
+    actorRole: user.isDeveloper ? 'developer' : user.isOwner ? 'owner' : 'staff',
+    action: 'lead.list',
+    resourceType: 'lead',
+    route: '/api/leads',
     method: 'GET',
-    path: '/api/leads',
-    statusCode: 200,
+    status: 200,
     durationMs: Date.now() - startTime,
-    userId: user.userId,
-    userEmail: user.email,
   });
 
   return NextResponse.json({ success: true, ...result });
@@ -62,26 +65,58 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
 
   const user = await getSessionUser();
+  let role = null;
+  if (user) {
+    role = await getUserRole(user.roleId);
+    if (!can(user, role, 'lead.create')) {
+      return standardError('RBAC_FORBIDDEN', 'Permission denied: lead.create required', 403);
+    }
+  }
+
+  if (!body.fullName || typeof body.fullName !== 'string' || !body.fullName.trim()) {
+    return standardError('VALIDATION_ERROR', 'Prospect name is required', 422, { fullName: 'Name is required' });
+  }
 
   try {
     const lead = await Lead.create({
-      ...body,
+      fullName: body.fullName.trim(),
+      email: body.email ? body.email.trim().toLowerCase() : '',
+      phone: body.phone ? body.phone.trim() : '',
+      status: body.status || 'new',
+      budget: body.budget,
+      propertyInterest: body.propertyInterest,
+      notes: body.notes || '',
+      assignedAgent: body.assignedAgent,
       createdBy: user?.userId || '000000000000000000000000', // Guest intake if public
     });
 
+    const safeLead = {
+      id: lead._id.toString(),
+      fullName: lead.fullName,
+      email: lead.email,
+      phone: lead.phone,
+      status: lead.status,
+    };
+
     if (user) {
       recordAuditEvent({
+        actorUserId: user.userId,
+        actorEmail: user.email,
+        actorRole: user.isDeveloper ? 'developer' : user.isOwner ? 'owner' : 'staff',
+        action: 'lead.created',
+        resourceType: 'lead',
+        resourceId: lead._id.toString(),
+        route: '/api/leads',
         method: 'POST',
-        path: '/api/leads',
-        statusCode: 201,
+        status: 201,
         durationMs: Date.now() - startTime,
-        userId: user.userId,
-        userEmail: user.email,
+        changes: computeSafeDiff(undefined, safeLead),
+        metadata: { leadName: lead.fullName },
       });
     }
 
     return NextResponse.json({ success: true, lead }, { status: 201 });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
+    return standardError('LEAD_CREATE_FAILED', err.message || 'Failed to create lead', 500);
   }
 }

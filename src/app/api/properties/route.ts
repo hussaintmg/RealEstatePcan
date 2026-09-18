@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireUser, standardError } from '@/lib/authGuard';
 import { getSessionUser } from '@/lib/auth';
-import { getUserRole, hasPermission, applyDataScope } from '@/lib/rbac';
+import { can, applyDataScope, getUserRole } from '@/lib/rbac';
 import { Property } from '@/models/Property';
 import { paginateQuery } from '@/lib/datagrid/paginateQuery';
 import { connectToDatabase } from '@/lib/db';
-import { recordAuditEvent } from '@/lib/auditLogger';
+import { recordAuditEvent, computeSafeDiff } from '@/lib/auditLogger';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,10 @@ export async function GET(req: NextRequest) {
 
   const user = await getSessionUser();
   const role = user ? await getUserRole(user.roleId) : null;
+
+  if (user && !can(user, role, 'property.list')) {
+    return standardError('RBAC_FORBIDDEN', 'Permission denied: property.list required', 403);
+  }
 
   // Search and Filter Params
   const { searchParams } = req.nextUrl;
@@ -47,26 +52,29 @@ export async function GET(req: NextRequest) {
   // Apply RBAC Data Scope if logged in; if public visitor, only show available properties
   let finalFilter = baseFilter;
   if (user) {
-    finalFilter = await applyDataScope(baseFilter, user, role);
+    finalFilter = await applyDataScope(baseFilter, user, role, 'property.list');
   } else {
     finalFilter.status = 'available';
   }
 
   const result = await paginateQuery(Property, {
     page,
-    limit: 20, // Strict 20 items per page as requested
+    limit: 20,
     filter: finalFilter,
     sort: { [sortBy]: sortDir },
   });
 
   if (user) {
     recordAuditEvent({
+      actorUserId: user.userId,
+      actorEmail: user.email,
+      actorRole: user.isDeveloper ? 'developer' : user.isOwner ? 'owner' : 'staff',
+      action: 'property.list',
+      resourceType: 'property',
+      route: '/api/properties',
       method: 'GET',
-      path: '/api/properties',
-      statusCode: 200,
+      status: 200,
       durationMs: Date.now() - startTime,
-      userId: user.userId,
-      userEmail: user.email,
     });
   }
 
@@ -75,16 +83,20 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authRes = await requireUser();
+  if (authRes.error) return authRes.error;
 
-  const role = await getUserRole(user.roleId);
-  if (!hasPermission(user, role, 'properties', 'create')) {
-    return NextResponse.json({ error: 'Permission denied: Cannot create properties' }, { status: 403 });
+  const { user, role } = authRes;
+  if (!can(user, role, 'property.create')) {
+    return standardError('RBAC_FORBIDDEN', 'Permission denied: Cannot create properties', 403);
   }
 
   await connectToDatabase();
   const body = await req.json();
+
+  if (!body.title || typeof body.title !== 'string' || !body.title.trim()) {
+    return standardError('VALIDATION_ERROR', 'Property title is required', 422, { title: 'Title is required' });
+  }
 
   try {
     const slug = `${body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`;
@@ -94,17 +106,31 @@ export async function POST(req: NextRequest) {
       createdBy: user.userId,
     });
 
+    const safeProperty = {
+      id: property._id.toString(),
+      title: property.title,
+      price: property.price,
+      status: property.status,
+      slug: property.slug,
+    };
+
     recordAuditEvent({
+      actorUserId: user.userId,
+      actorEmail: user.email,
+      actorRole: user.isDeveloper ? 'developer' : user.isOwner ? 'owner' : 'staff',
+      action: 'property.created',
+      resourceType: 'property',
+      resourceId: property._id.toString(),
+      route: '/api/properties',
       method: 'POST',
-      path: '/api/properties',
-      statusCode: 201,
+      status: 201,
       durationMs: Date.now() - startTime,
-      userId: user.userId,
-      userEmail: user.email,
+      changes: computeSafeDiff(undefined, safeProperty),
+      metadata: { propertyTitle: property.title },
     });
 
     return NextResponse.json({ success: true, property }, { status: 201 });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
+    return standardError('PROPERTY_CREATE_FAILED', err.message || 'Failed to create property', 500);
   }
 }

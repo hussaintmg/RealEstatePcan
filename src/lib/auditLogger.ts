@@ -100,6 +100,9 @@ export interface RecordAuditParams {
   action?: string;
   resourceType?: string;
   resourceId?: string;
+  resource?: string; // backwards compatibility alias for resourceType
+  severity?: 'low' | 'medium' | 'high' | 'critical' | string;
+  details?: Record<string, any>; // backwards compatibility alias for metadata
   requestId?: string;
   method?: string;
   route?: string;
@@ -114,6 +117,16 @@ export interface RecordAuditParams {
   error?: string;
 }
 
+export const logAuditEvent = recordAuditEvent;
+
+const pendingWrites = new Set<Promise<any>>();
+
+export async function flushAuditLogs(timeoutMs: number = 3000): Promise<void> {
+  if (pendingWrites.size === 0) return;
+  const timeoutPromise = new Promise((resolve) => setTimeout(resolve, timeoutMs));
+  await Promise.race([Promise.allSettled(Array.from(pendingWrites)), timeoutPromise]);
+}
+
 export function recordAuditEvent(params: RecordAuditParams): IAuditEvent {
   const reqId = params.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const status = params.status ?? params.statusCode ?? 200;
@@ -121,7 +134,8 @@ export function recordAuditEvent(params: RecordAuditParams): IAuditEvent {
   const actorUserId = params.actorUserId || params.userId;
   const actorEmail = params.actorEmail || params.userEmail;
 
-  const safeMetadata = params.metadata ? redactSecrets(params.metadata) : undefined;
+  const rawMeta = params.metadata || params.details;
+  const safeMetadata = rawMeta ? redactSecrets(rawMeta) : undefined;
   const safeChanges = params.changes
     ? {
         before: params.changes.before ? redactSecrets(params.changes.before) : undefined,
@@ -136,7 +150,7 @@ export function recordAuditEvent(params: RecordAuditParams): IAuditEvent {
     actorEmail,
     actorRole: params.actorRole || 'anonymous',
     action: params.action || `${params.method || 'POST'}:${route || 'action'}`,
-    resourceType: params.resourceType || 'system',
+    resourceType: params.resourceType || params.resource || 'system',
     resourceId: params.resourceId,
     requestId: reqId,
     method: params.method || 'POST',
@@ -162,7 +176,7 @@ export function recordAuditEvent(params: RecordAuditParams): IAuditEvent {
   auditEmitter.emit('audit_event', auditEntry);
 
   // 3. Persist asynchronously to MongoDB
-  (async () => {
+  const writePromise = (async () => {
     try {
       await connectToDatabase();
       await AuditLog.create({
@@ -190,6 +204,9 @@ export function recordAuditEvent(params: RecordAuditParams): IAuditEvent {
       console.warn('[AuditLogger] Could not persist to DB:', err);
     }
   })();
+
+  pendingWrites.add(writePromise);
+  writePromise.finally(() => pendingWrites.delete(writePromise));
 
   return auditEntry;
 }

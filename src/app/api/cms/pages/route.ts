@@ -3,6 +3,8 @@ import { connectToDatabase } from '@/lib/db';
 import { CmsPage } from '@/models/CmsPage';
 import { verifyFeatureAllowed } from '@/middleware/featureGating';
 import { getSessionUser } from '@/lib/auth';
+import { validatePageSlug } from '@/lib/cms/slugValidator';
+import { getSectionDefinition } from '@/lib/cms/sdk/sectionLibrary';
 
 export async function GET(req: NextRequest) {
   const gateCheck = await verifyFeatureAllowed('cms');
@@ -11,76 +13,34 @@ export async function GET(req: NextRequest) {
   await connectToDatabase();
   const { searchParams } = new URL(req.url);
   const slug = searchParams.get('slug');
+  const includeDisabled = searchParams.get('includeDisabled') === 'true';
 
   try {
-    if (slug) {
-      let page = await CmsPage.findOne({ slug }).lean();
+    if (slug !== null) {
+      const normalizedSlug = slug.trim().toLowerCase().replace(/^\/+|\/+$/g, '');
+      const query: any = { slug: normalizedSlug };
+      
+      const page = await CmsPage.findOne(query).lean();
       if (!page) {
-        // Return default skeleton for standard pages if not seeded
-        page = {
-          title: slug.charAt(0).toUpperCase() + slug.slice(1),
-          slug,
-          isPublished: true,
-          metaTitle: `${slug.toUpperCase()} | Aura Heights Luxury Estates`,
-          metaDescription: `Discover premier architectural developments and curated luxury living in ${slug}.`,
-          sections: [
-            {
-              id: 'sec-hero',
-              type: 'hero_video',
-              title: 'Architectural Grandeur • Hero Scrubber',
-              order: 1,
-              isVisible: true,
-              content: {
-                badge: 'AURA SIGNATURE LIVING',
-                heading: 'Sculpted Luxury Architecture',
-                subheading: 'Experience panoramic hillscapes and bespoke contemporary villas designed for private living.',
-                ctaText: 'Explore Estates',
-                ctaUrl: '/properties',
-                videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-living-room-with-a-modern-interior-design-41484-large.mp4',
-              },
-            },
-            {
-              id: 'sec-playcanvas',
-              type: 'playcanvas_tour',
-              title: 'PlayCanvas 3D Virtual Walkthrough',
-              order: 2,
-              isVisible: true,
-              content: {
-                badge: '3D WEBGL ENGINE',
-                heading: 'Immersive Real-Time Walkthrough',
-                subheading: 'Inspect fine Italian finishes, switch floors, and tour architectural suites in high-fidelity 3D.',
-              },
-            },
-            {
-              id: 'sec-featured',
-              type: 'properties_grid',
-              title: 'Curated Architectural Portfolio',
-              order: 3,
-              isVisible: true,
-              content: {
-                heading: 'Signature Estates',
-                subheading: 'Handcrafted hillside villas, private penthouses, and premier estates.',
-                limit: 6,
-              },
-            },
-            {
-              id: 'sec-consultation',
-              type: 'lead_form',
-              title: 'VIP Private Advisory Consultation',
-              order: 4,
-              isVisible: true,
-              content: {
-                heading: 'Schedule a Confidential Private Viewing',
-                subheading: 'Our Senior Property Directors provide direct advisory for high-net-worth investors.',
-              },
-            },
-          ],
-        } as any;
+        return NextResponse.json({ success: false, error: 'Page not found' }, { status: 404 });
       }
+
+      // Check if disabled/archived and requested by public visitor
+      if (!includeDisabled && (page.status === 'disabled' || page.status === 'archived')) {
+        return NextResponse.json(
+          { success: false, error: 'This page is currently unavailable or disabled by site administrator.' },
+          { status: 404 }
+        );
+      }
+
       return NextResponse.json({ success: true, page });
     }
 
-    const pages = await CmsPage.find({}).sort({ updatedAt: -1 }).lean();
+    // List all pages for CMS dashboard
+    const pages = await CmsPage.find({ status: { $ne: 'archived' } })
+      .sort({ isSystemPage: -1, updatedAt: -1 })
+      .lean();
+
     return NextResponse.json({ success: true, pages });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -99,27 +59,99 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { slug, title, sections, isPublished, metaTitle, metaDescription } = body;
+    const { title, slug, template = 'blank', status = 'draft', seo } = body;
 
-    if (!slug || !title) {
-      return NextResponse.json({ success: false, error: 'Slug and title are required' }, { status: 400 });
+    if (!title) {
+      return NextResponse.json({ success: false, error: 'Page title is required' }, { status: 400 });
     }
 
-    const updatedPage = await CmsPage.findOneAndUpdate(
-      { slug },
-      {
-        title,
-        slug,
-        sections: sections || [],
-        isPublished: isPublished ?? true,
-        metaTitle: metaTitle || '',
-        metaDescription: metaDescription || '',
-        createdBy: user.userId,
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    // Validate slug
+    const slugCheck = await validatePageSlug(slug || title);
+    if (!slugCheck.valid) {
+      return NextResponse.json({ success: false, error: slugCheck.error }, { status: 400 });
+    }
 
-    return NextResponse.json({ success: true, page: updatedPage });
+    // Seed initial sections based on template choice
+    const initialSections: any[] = [];
+    if (template === 'luxury_home') {
+      const heroDef = getSectionDefinition('hero_cinematic');
+      const gridDef = getSectionDefinition('prop_grid_v1');
+      const ctaDef = getSectionDefinition('cta_v1');
+      if (heroDef) {
+        initialSections.push({
+          id: `sec-${Date.now()}-1`,
+          sectionKey: heroDef.key,
+          sectionVersion: heroDef.version,
+          title: heroDef.metadata.name,
+          order: 1,
+          isVisible: true,
+          props: heroDef.defaultProps,
+        });
+      }
+      if (gridDef) {
+        initialSections.push({
+          id: `sec-${Date.now()}-2`,
+          sectionKey: gridDef.key,
+          sectionVersion: gridDef.version,
+          title: gridDef.metadata.name,
+          order: 2,
+          isVisible: true,
+          props: gridDef.defaultProps,
+        });
+      }
+      if (ctaDef) {
+        initialSections.push({
+          id: `sec-${Date.now()}-3`,
+          sectionKey: ctaDef.key,
+          sectionVersion: ctaDef.version,
+          title: ctaDef.metadata.name,
+          order: 3,
+          isVisible: true,
+          props: ctaDef.defaultProps,
+        });
+      }
+    } else if (template === 'property_detail') {
+      const detailDef = getSectionDefinition('prop_detail_v1');
+      const vrDef = getSectionDefinition('vr_3d_v1');
+      if (detailDef) {
+        initialSections.push({
+          id: `sec-${Date.now()}-1`,
+          sectionKey: detailDef.key,
+          sectionVersion: detailDef.version,
+          title: detailDef.metadata.name,
+          order: 1,
+          isVisible: true,
+          props: detailDef.defaultProps,
+        });
+      }
+      if (vrDef) {
+        initialSections.push({
+          id: `sec-${Date.now()}-2`,
+          sectionKey: vrDef.key,
+          sectionVersion: vrDef.version,
+          title: vrDef.metadata.name,
+          order: 2,
+          isVisible: true,
+          props: vrDef.defaultProps,
+        });
+      }
+    }
+
+    const newPage = await CmsPage.create({
+      title,
+      slug: slugCheck.normalizedSlug,
+      status,
+      isPublished: status === 'published',
+      sections: initialSections,
+      seo: {
+        metaTitle: seo?.metaTitle || `${title} | Signature Residences`,
+        metaDescription: seo?.metaDescription || `Discover architectural excellence on ${title}.`,
+      },
+      version: 1,
+      createdBy: user.userId,
+    });
+
+    return NextResponse.json({ success: true, page: newPage });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

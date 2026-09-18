@@ -127,7 +127,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user) return false;
     if (user.isDeveloper) return true;
     if (user.isOwner) {
-      if (permissionKey === 'system.configure') return false;
+      if (
+        permissionKey === 'system.configure' ||
+        permissionKey === 'feature_flags.manage' ||
+        permissionKey.startsWith('developer_settings')
+      ) {
+        return false;
+      }
       return true;
     }
     return effectivePermissions.includes(permissionKey);

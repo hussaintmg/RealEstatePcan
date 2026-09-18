@@ -64,8 +64,8 @@ export const ROUTE_PATTERNS = {
 
   // Staff operational dashboard pages
   staff: [
-    /^\/dashboard\/(properties|leads|customers|invoices|roles|templates)(\/.*)?$/,
-    /^\/api\/(properties|leads|customers|invoices|roles|templates|storage)(\/.*)?$/,
+    /^\/dashboard\/(properties|leads|customers|deals|appointments|invoices|payments|roles|templates|users|audit)(\/.*)?$/,
+    /^\/api\/(properties|leads|customers|deals|appointments|invoices|payments|roles|templates|storage|users|crm|portal|audit-logs)(\/.*)?$/,
   ],
 
   // Client customer portal

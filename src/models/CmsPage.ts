@@ -9,10 +9,16 @@ export interface ICmsSectionCondition {
 export interface ICmsSection {
   id: string;
   type: string;
+  sectionKey?: string;
+  sectionVersion?: string;
+  customTreeOverride?: any;
   title: string;
   order: number;
   isVisible: boolean;
   content: Record<string, any>;
+  props?: Record<string, any>;
+  bindings?: Record<string, any>;
+  responsive?: Record<string, any>;
   design?: {
     width?: string;
     maxWidth?: string;
@@ -57,12 +63,28 @@ export interface ICmsPageLayoutAssignment {
   useGlobalDefaults: boolean;
 }
 
+export interface ICmsPageVersionHistory {
+  version: number;
+  publishedAt: Date;
+  publishedBy: mongoose.Types.ObjectId;
+  snapshot: any;
+  note?: string;
+}
+
+export interface ICmsCustomVariable {
+  key: string;
+  label: string;
+  type: string;
+  value: any;
+}
+
 export interface ICmsPage extends Document {
   title: string;
   slug: string;
   sections: ICmsSection[];
-  status: 'draft' | 'published' | 'archived';
+  status: 'draft' | 'published' | 'disabled' | 'archived';
   isPublished: boolean; // Backwards compatibility
+  isSystemPage?: boolean;
   layout?: ICmsPageLayoutAssignment;
   themeId?: mongoose.Types.ObjectId;
   seo?: ICmsPageSeo;
@@ -71,6 +93,9 @@ export interface ICmsPage extends Document {
   isDynamic?: boolean;
   dynamicSource?: string;
   version: number;
+  publishedSnapshot?: Record<string, any>;
+  versionHistory?: ICmsPageVersionHistory[];
+  customVariables?: ICmsCustomVariable[];
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -98,11 +123,12 @@ const CmsPageSchema = new Schema<ICmsPage>(
     ],
     status: {
       type: String,
-      enum: ['draft', 'published', 'archived'],
+      enum: ['draft', 'published', 'disabled', 'archived'],
       default: 'published',
       index: true,
     },
     isPublished: { type: Boolean, default: true },
+    isSystemPage: { type: Boolean, default: false },
     layout: {
       topbarId: { type: Schema.Types.ObjectId, ref: 'CmsLayout' },
       navbarId: { type: Schema.Types.ObjectId, ref: 'CmsLayout' },
@@ -123,6 +149,24 @@ const CmsPageSchema = new Schema<ICmsPage>(
     isDynamic: { type: Boolean, default: false },
     dynamicSource: { type: String, default: '' },
     version: { type: Number, default: 1 },
+    publishedSnapshot: { type: Schema.Types.Mixed },
+    versionHistory: [
+      {
+        version: { type: Number, required: true },
+        publishedAt: { type: Date, default: Date.now },
+        publishedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+        snapshot: { type: Schema.Types.Mixed },
+        note: { type: String, default: '' },
+      },
+    ],
+    customVariables: [
+      {
+        key: { type: String, required: true },
+        label: { type: String, required: true },
+        type: { type: String, default: 'string' },
+        value: { type: Schema.Types.Mixed, default: '' },
+      },
+    ],
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }

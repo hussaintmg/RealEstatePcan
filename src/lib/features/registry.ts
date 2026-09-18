@@ -52,6 +52,15 @@ export const FEATURE_REGISTRY: FeatureDefinition[] = [
     scope: 'workspace',
   },
   {
+    key: 'custom_section_studio',
+    label: 'Custom Section Studio',
+    description: 'Declarative studio allowing Owners to build, preview, and register custom website sections.',
+    category: 'platform',
+    defaultEnabled: true,
+    scope: 'workspace',
+    dependencies: ['cms'],
+  },
+  {
     key: 'templateEditors',
     label: 'Omnichannel Template Suite',
     description: 'Designer for automated notification templates across email, SMS, and WhatsApp.',

@@ -231,9 +231,30 @@ export const PlayCanvasViewer: React.FC<PlayCanvasViewerProps> = ({
     fillLight.setPosition(0, 5, 2);
     app.root.addChild(fillLight);
 
-    // Build Luxury Architectural 3D Villa
-    createLuxuryVilla(app);
-    setLoading(false);
+    // Load GLB Container Asset or Fallback to Procedural Villa
+    if (modelUrl && (modelUrl.endsWith('.glb') || modelUrl.endsWith('.gltf') || modelUrl.includes('/models/') || modelUrl.includes('supabase') || modelUrl.startsWith('http'))) {
+      app.assets.loadFromUrl(modelUrl, 'container', (err, asset) => {
+        if (!err && asset?.resource) {
+          try {
+            const modelEntity = (asset.resource as any).instantiateRenderEntity();
+            modelEntity.name = 'ImportedArchitecturalModel';
+            app.root.addChild(modelEntity);
+            setLoading(false);
+          } catch (instantiateErr) {
+            console.warn('Failed to instantiate GLB entity, falling back to villa:', instantiateErr);
+            createLuxuryVilla(app);
+            setLoading(false);
+          }
+        } else {
+          console.warn('Could not load 3D container, falling back to luxury villa:', err);
+          createLuxuryVilla(app);
+          setLoading(false);
+        }
+      });
+    } else {
+      createLuxuryVilla(app);
+      setLoading(false);
+    }
 
     // Orbit Controls
     let isDragging = false;

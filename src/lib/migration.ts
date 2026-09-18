@@ -113,3 +113,118 @@ export async function runLegacySetupMigration(): Promise<MigrationResult> {
     setupCompleted: false,
   };
 }
+
+export interface RoleMigrationReport {
+  scanned: number;
+  migrated: number;
+  alreadyModern: number;
+  ambiguous: { roleId: string; name: string; reason: string }[];
+}
+
+/**
+ * Migrates legacy roles with page-level permissions into the centralized
+ * capability registry without breaking or deleting existing user access.
+ */
+export async function migrateLegacyRoles(): Promise<RoleMigrationReport> {
+  const { Role } = await import('../models/Role');
+  const { validateAndNormalizeAssignments } = await import('./permissions/registry');
+  const { recordAuditEvent, computeSafeDiff } = await import('./auditLogger');
+  const { invalidateRoleCache } = await import('./rbac');
+
+  await connectToDatabase();
+  const roles = await Role.find({});
+
+  const report: RoleMigrationReport = {
+    scanned: roles.length,
+    migrated: 0,
+    alreadyModern: 0,
+    ambiguous: [],
+  };
+
+  for (const role of roles) {
+    // If role already has modern capabilities defined and non-empty, skip
+    if (Array.isArray(role.capabilities) && role.capabilities.length > 0) {
+      report.alreadyModern++;
+      continue;
+    }
+
+    // If role has legacy permissions array, map them to modern business capabilities
+    if (Array.isArray(role.permissions) && role.permissions.length > 0) {
+      const candidateCaps: { key: string; enabled: boolean; scope?: string }[] = [];
+      const scopeVal =
+        role.dataScope === 'all_data'
+          ? 'all'
+          : role.dataScope === 'selected_roles'
+          ? 'team'
+          : 'assigned';
+
+      for (const p of role.permissions) {
+        if (!p.page) continue;
+        const page = p.page;
+
+        if (page === 'properties') {
+          if (p.read) candidateCaps.push({ key: 'property.list', enabled: true, scope: 'all' }, { key: 'property.view', enabled: true, scope: 'all' });
+          if (p.create) candidateCaps.push({ key: 'property.create', enabled: true });
+          if (p.update) candidateCaps.push({ key: 'property.edit', enabled: true, scope: 'all' });
+          if (p.delete) candidateCaps.push({ key: 'property.archive', enabled: true });
+        } else if (page === 'leads') {
+          if (p.read) candidateCaps.push({ key: 'lead.list', enabled: true, scope: scopeVal }, { key: 'lead.view', enabled: true, scope: scopeVal });
+          if (p.create) candidateCaps.push({ key: 'lead.create', enabled: true });
+          if (p.update) candidateCaps.push({ key: 'lead.edit', enabled: true, scope: scopeVal });
+          if (p.delete) candidateCaps.push({ key: 'lead.assign', enabled: true });
+          if (p.send_whatsapp) candidateCaps.push({ key: 'lead.send_whatsapp', enabled: true });
+          if (p.send_email) candidateCaps.push({ key: 'lead.send_email', enabled: true });
+        } else if (page === 'customers') {
+          if (p.read) candidateCaps.push({ key: 'customer.list', enabled: true, scope: scopeVal }, { key: 'customer.view', enabled: true, scope: scopeVal });
+          if (p.create) candidateCaps.push({ key: 'customer.create', enabled: true });
+          if (p.update) candidateCaps.push({ key: 'customer.edit', enabled: true, scope: scopeVal });
+          if (p.delete) candidateCaps.push({ key: 'customer.archive', enabled: true });
+        } else if (page === 'invoices') {
+          if (p.read) candidateCaps.push({ key: 'invoice.list', enabled: true, scope: scopeVal }, { key: 'invoice.view', enabled: true, scope: scopeVal });
+          if (p.download_pdf) candidateCaps.push({ key: 'invoice.download_pdf', enabled: true });
+          if (p.send_email) candidateCaps.push({ key: 'invoice.send_email', enabled: true });
+          if (p.send_whatsapp) candidateCaps.push({ key: 'invoice.send_whatsapp', enabled: true });
+          if (p.create || p.update) candidateCaps.push({ key: 'invoice.record_payment', enabled: true });
+          if (p.delete) candidateCaps.push({ key: 'invoice.void', enabled: true });
+        } else if (page === 'cms') {
+          if (p.read) candidateCaps.push({ key: 'cms.access', enabled: true });
+          if (p.create || p.update) candidateCaps.push({ key: 'cms.edit', enabled: true });
+          if (p.delete) candidateCaps.push({ key: 'cms.publish', enabled: true });
+        } else if (page === 'templates') {
+          if (p.read) candidateCaps.push({ key: 'template.access', enabled: true });
+          if (p.create) candidateCaps.push({ key: 'template.create', enabled: true });
+          if (p.update) candidateCaps.push({ key: 'template.edit', enabled: true });
+          if (p.delete) candidateCaps.push({ key: 'template.publish', enabled: true });
+        }
+      }
+
+      const { normalized } = validateAndNormalizeAssignments(candidateCaps);
+      const beforeCaps = role.capabilities;
+      role.capabilities = normalized;
+      role.version = (role.version || 1) + 1;
+      await role.save();
+      invalidateRoleCache(role._id.toString());
+
+      recordAuditEvent({
+        actorRole: 'system',
+        action: 'role.migrated',
+        resourceType: 'role',
+        resourceId: role._id.toString(),
+        route: 'migration:migrateLegacyRoles',
+        status: 200,
+        changes: computeSafeDiff({ capabilities: beforeCaps }, { capabilities: normalized }),
+        metadata: { roleName: role.name, capabilitiesCount: normalized.length },
+      });
+
+      report.migrated++;
+    } else {
+      report.ambiguous.push({
+        roleId: role._id.toString(),
+        name: role.name,
+        reason: 'Role has no permissions array or unrecognized schema; preserved without automated changes.',
+      });
+    }
+  }
+
+  return report;
+}

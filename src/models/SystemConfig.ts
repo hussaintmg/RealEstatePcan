@@ -12,15 +12,19 @@ export interface IAiProviderConfig {
 }
 
 export interface ISystemFeatures {
-  globalSearch: boolean;
-  aiAssistant: boolean;
-  customerPortal: boolean;
-  playcanvas3d: boolean;
-  scrollVideoFrames: boolean;
-  cms: boolean;
-  templateEditors: boolean;
-  themeToggle: boolean;
-  realtimeAuditLogs: boolean;
+  globalSearch?: boolean;
+  aiAssistant?: boolean;
+  customerPortal?: boolean;
+  playcanvas3d?: boolean;
+  scrollVideoFrames?: boolean;
+  cms?: boolean;
+  custom_section_studio?: boolean;
+  templateEditors?: boolean;
+  themeToggle?: boolean;
+  realtimeAuditLogs?: boolean;
+  whatsapp?: boolean;
+  payments?: boolean;
+  [key: string]: boolean | undefined;
 }
 
 export interface ISystemBranding {
@@ -75,15 +79,21 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
       footerLogoDark: { type: String, default: '' },
     },
     features: {
-      globalSearch: { type: Boolean, default: true },
-      aiAssistant: { type: Boolean, default: true },
-      customerPortal: { type: Boolean, default: true },
-      playcanvas3d: { type: Boolean, default: true },
-      scrollVideoFrames: { type: Boolean, default: true },
-      cms: { type: Boolean, default: true },
-      templateEditors: { type: Boolean, default: true },
-      themeToggle: { type: Boolean, default: true },
-      realtimeAuditLogs: { type: Boolean, default: true },
+      type: Schema.Types.Mixed,
+      default: () => ({
+        globalSearch: true,
+        aiAssistant: true,
+        customerPortal: true,
+        playcanvas3d: true,
+        scrollVideoFrames: true,
+        cms: true,
+        custom_section_studio: true,
+        templateEditors: true,
+        themeToggle: true,
+        realtimeAuditLogs: true,
+        whatsapp: true,
+        payments: true,
+      }),
     },
     storageProvider: {
       type: String,

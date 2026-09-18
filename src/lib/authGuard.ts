@@ -78,15 +78,38 @@ export async function requireOwner(): Promise<
   return authRes;
 }
 
+interface CachedFeatureEntry {
+  features: Record<string, boolean>;
+  timestamp: number;
+}
+
+let cachedFeatures: CachedFeatureEntry | null = null;
+const FEATURE_CACHE_TTL_MS = 15000; // 15 seconds
+
+export function invalidateFeatureCache() {
+  cachedFeatures = null;
+}
+
+export async function getCachedSystemFeatures(): Promise<Record<string, boolean>> {
+  const now = Date.now();
+  if (cachedFeatures && (now - cachedFeatures.timestamp) < FEATURE_CACHE_TTL_MS) {
+    return cachedFeatures.features;
+  }
+
+  await connectToDatabase();
+  const config = await SystemConfig.findOne().select('features').lean();
+  const features: Record<string, boolean> = (config?.features as any) || {};
+  cachedFeatures = { features, timestamp: now };
+  return features;
+}
+
 /**
  * Enforces that a specific platform or workspace feature flag is currently active.
  */
 export async function requireFeature(
   featureKey: string
 ): Promise<{ allowed: boolean; error: NextResponse | null }> {
-  await connectToDatabase();
-  const config = await SystemConfig.findOne().select('features').lean();
-  const features: Record<string, boolean> = config?.features || {};
+  const features = await getCachedSystemFeatures();
 
   // If explicitly disabled, reject with 403
   if (features[featureKey] === false) {

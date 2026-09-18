@@ -5,9 +5,36 @@ import { User } from '../models/User';
 import { DataScope } from './permissions/types';
 import { getPermission } from './permissions/registry';
 
+interface CachedRoleEntry {
+  role: any;
+  timestamp: number;
+}
+
+const roleCache = new Map<string, CachedRoleEntry>();
+const ROLE_CACHE_TTL_MS = 15000; // 15s short-lived TTL
+
+export function invalidateRoleCache(roleId?: string) {
+  if (roleId) {
+    roleCache.delete(roleId);
+  } else {
+    roleCache.clear();
+  }
+}
+
 export async function getUserRole(roleId?: string): Promise<any | null> {
   if (!roleId || !mongoose.Types.ObjectId.isValid(roleId)) return null;
-  return Role.findById(roleId).lean();
+
+  const now = Date.now();
+  const cached = roleCache.get(roleId);
+  if (cached && (now - cached.timestamp) < ROLE_CACHE_TTL_MS) {
+    return cached.role;
+  }
+
+  const role = await Role.findById(roleId).lean();
+  if (role) {
+    roleCache.set(roleId, { role, timestamp: now });
+  }
+  return role;
 }
 
 /**

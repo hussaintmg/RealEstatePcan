@@ -1,6 +1,7 @@
 import { PermissionDefinition } from '../types';
 
 export const cmsPermissions: PermissionDefinition[] = [
+  // Legacy access & baseline
   {
     key: 'cms.access',
     module: 'cms',
@@ -27,5 +28,108 @@ export const cmsPermissions: PermissionDefinition[] = [
     dangerous: true,
     requiresFeature: 'cms',
     dependencies: ['cms.edit'],
+  },
+
+  // Page Management
+  {
+    key: 'cms.pages.view',
+    module: 'cms',
+    label: 'View Public Pages',
+    description: 'Browse the list of system and custom public pages, statuses, and slug configurations.',
+    type: 'read',
+    requiresFeature: 'cms',
+  },
+  {
+    key: 'cms.pages.create',
+    module: 'cms',
+    label: 'Create Custom Pages',
+    description: 'Create new custom public pages, assign slugs, and choose initial templates.',
+    type: 'write',
+    requiresFeature: 'cms',
+    dependencies: ['cms.pages.view'],
+  },
+  {
+    key: 'cms.pages.edit',
+    module: 'cms',
+    label: 'Edit Page Layout & Sections',
+    description: 'Open visual Page Builder, add/remove sections, bind variables, and configure conditions.',
+    type: 'write',
+    requiresFeature: 'cms',
+    dependencies: ['cms.pages.view'],
+  },
+  {
+    key: 'cms.pages.publish',
+    module: 'cms',
+    label: 'Publish & Rollback Pages',
+    description: 'Atomically deploy draft page revisions to production and perform version rollbacks.',
+    type: 'action',
+    dangerous: true,
+    requiresFeature: 'cms',
+    dependencies: ['cms.pages.edit'],
+  },
+  {
+    key: 'cms.pages.archive',
+    module: 'cms',
+    label: 'Archive & Disable Pages',
+    description: 'Disable public accessibility of default pages and archive custom pages.',
+    type: 'write',
+    dangerous: true,
+    requiresFeature: 'cms',
+    dependencies: ['cms.pages.view'],
+  },
+
+  // Section SDK & Section Studio
+  {
+    key: 'cms.sections.use',
+    module: 'cms',
+    label: 'Use Registered Sections',
+    description: 'Add and configure existing sections from the Section Library into page layouts.',
+    type: 'read',
+    requiresFeature: 'cms',
+  },
+  {
+    key: 'cms.sections.create',
+    module: 'cms',
+    label: 'Create Custom Sections',
+    description: 'Use Section Studio to design custom declarative sections from primitive components.',
+    type: 'write',
+    requiresFeature: 'cms',
+    dependencies: ['cms.sections.use'],
+  },
+  {
+    key: 'cms.sections.manage',
+    module: 'cms',
+    label: 'Manage Global Section Registry',
+    description: 'Import, export, upgrade, and deprecate section definitions platform-wide.',
+    type: 'action',
+    dangerous: true,
+    requiresFeature: 'cms',
+    dependencies: ['cms.sections.create'],
+  },
+
+  // Variables, Forms & SEO
+  {
+    key: 'cms.variables.manage',
+    module: 'cms',
+    label: 'Manage Dynamic Variables',
+    description: 'Create custom page variables and inspect model reflection registries.',
+    type: 'write',
+    requiresFeature: 'cms',
+  },
+  {
+    key: 'cms.forms.manage',
+    module: 'cms',
+    label: 'Manage Form Actions & Pipelines',
+    description: 'Configure lead capture, viewing request pipelines, and anti-spam controls.',
+    type: 'write',
+    requiresFeature: 'cms',
+  },
+  {
+    key: 'cms.seo.manage',
+    module: 'cms',
+    label: 'Manage SEO & Structured Data',
+    description: 'Configure meta tags, OpenGraph previews, canonical URLs, and JSON-LD schemas.',
+    type: 'write',
+    requiresFeature: 'cms',
   },
 ];

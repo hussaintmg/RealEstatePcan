@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AiSectionContractSchema",
+  "description": "Machine-readable contract that AI models must conform to when generating declarative website sections.",
+  "type": "object",
+  "required": ["key", "version", "metadata", "propsSchema", "defaultProps", "layoutTree"],
+  "additionalProperties": false,
+  "properties": {
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+$",
+      "description": "Unique lowercase identifier for the section."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version string (e.g. '1.0.0')."
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["key", "version", "name", "category", "author", "source"],
+      "properties": {
+        "key": { "type": "string" },
+        "version": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Hero",
+            "Property Search",
+            "Property Listings",
+            "Featured Property",
+            "3D",
+            "Gallery",
+            "Video",
+            "Scroll Story",
+            "Stats",
+            "Features",
+            "Amenities",
+            "Neighborhood",
+            "Floor Plans",
+            "Agents",
+            "Testimonials",
+            "Logos",
+            "Partners",
+            "CTA",
+            "Contact",
+            "Forms",
+            "FAQ",
+            "Team",
+            "Timeline",
+            "Blog",
+            "Pricing",
+            "Comparison",
+            "Footer",
+            "Custom"
+          ]
+        },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "author": { "type": "string" },
+        "source": { "type": "string", "enum": ["ai", "developer", "owner", "system", "imported"] }
+      }
+    },
+    "propsSchema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "label", "type"],
+        "properties": {
+          "key": { "type": "string" },
+          "label": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["string", "richText", "number", "boolean", "select", "color", "media", "icon", "repeater", "object"]
+          },
+          "defaultValue": {},
+          "description": { "type": "string" },
+          "placeholder": { "type": "string" },
+          "supportsVariables": { "type": "boolean" },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["label", "value"],
+              "properties": {
+                "label": { "type": "string" },
+                "value": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "defaultProps": {
+      "type": "object",
+      "description": "Default seed prop values used for initial preview and fallback."
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "label"],
+        "properties": {
+          "name": { "type": "string" },
+          "label": { "type": "string" },
+          "allowedTypes": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "layoutTree": {
+      "$ref": "#/definitions/PrimitiveNode"
+    },
+    "animations": { "type": "object" },
+    "actions": { "type": "object" }
+  },
+  "definitions": {
+    "PrimitiveNode": {
+      "type": "object",
+      "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Container",
+            "Heading",
+            "Text",
+            "Image",
+            "Video",
+            "Button",
+            "Icon",
+            "Badge",
+            "Card",
+            "Grid",
+            "Stack",
+            "Columns",
+            "Spacer",
+            "Divider",
+            "Form",
+            "Repeater",
+            "PlayCanvasViewer",
+            "Tabs",
+            "Accordion",
+            "Carousel"
+          ]
+        },
+        "props": { "type": "object" },
+        "styles": {
+          "type": "object",
+          "properties": {
+            "padding": { "type": "string" },
+            "margin": { "type": "string" },
+            "backgroundColor": { "type": "string" },
+            "textColor": { "type": "string" },
+            "borderRadius": { "type": "string" },
+            "maxWidth": { "type": "string" },
+            "textAlign": { "type": "string", "enum": ["left", "center", "right", "justify"] },
+            "customClasses": { "type": "string" }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PrimitiveNode" }
+        },
+        "animation": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["none", "fade", "slide_up", "scale", "reveal"] },
+            "duration": { "type": "number" },
+            "delay": { "type": "number" },
+            "hoverEffect": { "type": "string", "enum": ["none", "lift", "scale", "glow"] }
+          }
+        }
+      }
+    }
+  }
+}

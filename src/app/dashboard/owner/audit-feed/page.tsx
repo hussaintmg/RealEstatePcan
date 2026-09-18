@@ -36,7 +36,10 @@ export default function AuditFeedPage() {
   // Filters
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('');
+  const [resourceTypeFilter, setResourceTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Live SSE Stream State
   const [liveEvents, setLiveEvents] = useState<IAuditEvent[]>([]);
@@ -44,6 +47,20 @@ export default function AuditFeedPage() {
 
   // Detail Modal
   const [selectedEvent, setSelectedEvent] = useState<IAuditEvent | null>(null);
+
+  // Initialize filters from URL on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get('search')) setSearch(sp.get('search')!);
+      if (sp.get('action')) setActionFilter(sp.get('action')!);
+      if (sp.get('resourceType')) setResourceTypeFilter(sp.get('resourceType')!);
+      if (sp.get('status')) setStatusFilter(sp.get('status')!);
+      if (sp.get('startDate')) setStartDate(sp.get('startDate')!);
+      if (sp.get('endDate')) setEndDate(sp.get('endDate')!);
+      if (sp.get('page')) setPage(parseInt(sp.get('page')!, 10) || 1);
+    }
+  }, []);
 
   const fetchAuditLogs = async (pageNum = page) => {
     setLoading(true);
@@ -53,7 +70,17 @@ export default function AuditFeedPage() {
       params.set('limit', '15');
       if (search.trim()) params.set('search', search.trim());
       if (actionFilter) params.set('action', actionFilter);
+      if (resourceTypeFilter) params.set('resourceType', resourceTypeFilter);
       if (statusFilter) params.set('status', statusFilter);
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+
+      // Sync with URL query parameters
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.search = params.toString();
+        window.history.replaceState(null, '', url.toString());
+      }
 
       const res = await fetch(`/api/audit-logs?${params.toString()}`);
       const data = await res.json();
@@ -72,7 +99,7 @@ export default function AuditFeedPage() {
 
   useEffect(() => {
     fetchAuditLogs(1);
-  }, [search, actionFilter, statusFilter]);
+  }, [search, actionFilter, resourceTypeFilter, statusFilter, startDate, endDate]);
 
   // SSE Live listener setup
   useEffect(() => {

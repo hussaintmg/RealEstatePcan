@@ -11,8 +11,12 @@ export interface IInvoiceMilestone {
 export interface IInvoice extends Document {
   invoiceNumber: string;
   customerId: mongoose.Types.ObjectId;
+  dealId?: mongoose.Types.ObjectId;
   propertyId?: mongoose.Types.ObjectId;
+  milestoneTitle?: string;
   amount: number;
+  paidAmount: number;
+  balance: number;
   currency: string;
   status: 'pending' | 'paid' | 'overdue' | 'cancelled';
   dueDate: Date;
@@ -28,8 +32,12 @@ const InvoiceSchema = new Schema<IInvoice>(
   {
     invoiceNumber: { type: String, required: true, unique: true, uppercase: true },
     customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true },
+    dealId: { type: Schema.Types.ObjectId, ref: 'Deal' },
     propertyId: { type: Schema.Types.ObjectId, ref: 'Property' },
+    milestoneTitle: { type: String, default: '' },
     amount: { type: Number, required: true, min: 0 },
+    paidAmount: { type: Number, default: 0, min: 0 },
+    balance: { type: Number, default: 0, min: 0 },
     currency: { type: String, default: 'USD' },
     status: {
       type: String,
