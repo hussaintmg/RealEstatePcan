@@ -23,6 +23,7 @@ import { OfflineFrameStore, CachedScanFrame } from '@/lib/scanning/offlineFrameS
 export default function CameraCapturePage() {
   const params = useParams();
   const router = useRouter();
+  const propertyId = (params?.id as string) || '';
   const searchParams = useSearchParams();
   const initialScanId = searchParams?.get('scanId') || '';
   const [scanId, setScanId] = useState<string>(initialScanId);

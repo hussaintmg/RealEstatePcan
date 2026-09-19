@@ -186,6 +186,16 @@ export default function DeveloperConsolePage() {
     });
   }, [featureSearch, activeCategory]);
 
+  const enabledCount = useMemo(() => {
+    if (!config?.features) return 0;
+    return Object.values(config.features).filter(Boolean).length;
+  }, [config]);
+
+  const activeAiCount = useMemo(() => {
+    if (!config?.aiProviders) return 0;
+    return config.aiProviders.filter((p: any) => p.isEnabled).length;
+  }, [config]);
+
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -250,16 +260,6 @@ export default function DeveloperConsolePage() {
       </div>
     );
   }
-
-  const enabledCount = useMemo(() => {
-    if (!config?.features) return 0;
-    return Object.values(config.features).filter(Boolean).length;
-  }, [config]);
-
-  const activeAiCount = useMemo(() => {
-    if (!config?.aiProviders) return 0;
-    return config.aiProviders.filter((p: any) => p.isEnabled).length;
-  }, [config]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 px-1 sm:px-2 py-1">

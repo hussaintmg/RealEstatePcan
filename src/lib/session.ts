@@ -8,6 +8,7 @@ export interface TokenPayload {
   companyName?: string;
   isDeveloper: boolean;
   isOwner: boolean;
+  role?: string;
   roleId?: string;
   exp?: number;
 }
