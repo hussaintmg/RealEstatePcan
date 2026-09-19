@@ -24,6 +24,8 @@ import {
   ShieldAlert,
   ArrowLeft,
   LogOut,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Switch } from '@/components/ui/Switch';
@@ -50,6 +52,7 @@ export default function DeveloperConsolePage() {
   const [featureSearch, setFeatureSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'features' | 'ai' | 'owner' | 'split'>('features');
+  const [viewMode, setViewMode] = useState<'rails' | 'grid'>('rails');
 
   // Owner Provisioning Form
   const [ownerForm, setOwnerForm] = useState({ fullName: '', email: '', password: '', phone: '' });
@@ -398,68 +401,175 @@ export default function DeveloperConsolePage() {
               ))}
             </div>
 
-            <div className="w-full sm:w-64 flex-shrink-0">
-              <SearchInput
-                value={featureSearch}
-                onValueChange={setFeatureSearch}
-                placeholder="Search feature flags..."
-                size="sm"
-              />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {/* View Mode Toggle: Rails (Horizontal Stack per Category) or Grid */}
+              <div className="flex items-center p-0.5 rounded-lg bg-white/5 border border-white/10 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('rails')}
+                  title="Horizontal Category Rails"
+                  className={`p-1.5 rounded-md text-xs flex items-center gap-1 transition-all ${
+                    viewMode === 'rails'
+                      ? 'bg-emerald-500/20 text-emerald-300 font-semibold shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[10px]">Rails</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  title="Compact Grid"
+                  className={`p-1.5 rounded-md text-xs flex items-center gap-1 transition-all ${
+                    viewMode === 'grid'
+                      ? 'bg-emerald-500/20 text-emerald-300 font-semibold shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[10px]">Grid</span>
+                </button>
+              </div>
+
+              <div className="w-full sm:w-60 flex-shrink-0">
+                <SearchInput
+                  value={featureSearch}
+                  onValueChange={setFeatureSearch}
+                  placeholder="Search feature flags..."
+                  size="sm"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Feature Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {filteredFeatures.map((feat) => {
-              const isEnabled = !!config.features?.[feat.key];
+          {/* Feature Cards: Rails (Horizontal Stack per Category) or Compact Grid */}
+          {viewMode === 'rails' && activeCategory === 'all' && !featureSearch ? (
+            <div className="space-y-3.5">
+              {FEATURE_CATEGORIES.map((cat) => {
+                const catFeatures = FEATURE_REGISTRY.filter((f) => f.category === cat.key);
+                if (catFeatures.length === 0) return null;
+                const activeInCat = catFeatures.filter((f) => !!config.features?.[f.key]).length;
 
-              return (
-                <div
-                  key={feat.key}
-                  className={`p-3.5 rounded-xl border transition-all duration-200 flex flex-col justify-between ${
-                    isEnabled
-                      ? 'bg-emerald-950/15 border-emerald-500/30 shadow-sm shadow-emerald-950/20'
-                      : 'bg-slate-900/40 border-white/5 opacity-75 hover:opacity-100'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-xs font-bold text-white tracking-tight truncate">{feat.label}</h3>
-                        <span className="font-mono text-[9px] text-slate-400 block truncate">{feat.key}</span>
+                return (
+                  <div key={cat.key} className="p-3.5 rounded-2xl bg-slate-900/40 border border-white/5 space-y-2">
+                    <div className="flex items-center justify-between px-0.5">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xs font-bold text-white tracking-tight">{cat.label}</h3>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+                          {activeInCat}/{catFeatures.length} Active
+                        </span>
                       </div>
-
-                      <Switch
-                        checked={isEnabled}
-                        onChange={() => handleToggleFeature(feat.key)}
-                        size="sm"
-                      />
+                      <span className="text-[10px] text-slate-500 font-mono hidden sm:inline-block">
+                        Horizontal Rail &rarr;
+                      </span>
                     </div>
 
-                    <p className="text-[11px] text-slate-400 line-clamp-2 mb-2">
-                      {feat.description}
-                    </p>
-                  </div>
+                    {/* Horizontal Scroll Rail */}
+                    <div className="horizontal-scroll-rail pb-2 pt-0.5">
+                      {catFeatures.map((feat) => {
+                        const isEnabled = !!config.features?.[feat.key];
+                        return (
+                          <div
+                            key={feat.key}
+                            className={`w-[280px] sm:w-[300px] flex-shrink-0 p-3 rounded-xl border transition-all duration-200 flex flex-col justify-between ${
+                              isEnabled
+                                ? 'bg-emerald-950/20 border-emerald-500/30 shadow-sm shadow-emerald-950/20'
+                                : 'bg-slate-900/60 border-white/5 opacity-80 hover:opacity-100'
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-start justify-between gap-2 mb-1.5">
+                                <div className="min-w-0 flex-1">
+                                  <h4 className="text-xs font-bold text-white tracking-tight truncate">{feat.label}</h4>
+                                  <span className="font-mono text-[9px] text-slate-400 block truncate">{feat.key}</span>
+                                </div>
+                                <Switch
+                                  checked={isEnabled}
+                                  onChange={() => handleToggleFeature(feat.key)}
+                                  size="sm"
+                                />
+                              </div>
+                              <p className="text-[11px] text-slate-400 line-clamp-2 mb-2 leading-tight">
+                                {feat.description}
+                              </p>
+                            </div>
 
-                  <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
-                    <span className="text-slate-400 uppercase tracking-wider font-medium">
-                      Scope: <span className="text-slate-300">{feat.scope}</span>
-                    </span>
-
-                    <span
-                      className={`font-semibold px-1.5 py-0.5 rounded border text-[9px] ${
-                        isEnabled
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : 'bg-slate-800 text-slate-400 border-white/5'
-                      }`}
-                    >
-                      {isEnabled ? 'ACTIVE' : 'OFF'}
-                    </span>
+                            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
+                              <span className="text-slate-400 uppercase tracking-wider font-medium">
+                                Scope: <span className="text-slate-300">{feat.scope}</span>
+                              </span>
+                              <span
+                                className={`font-semibold px-1.5 py-0.5 rounded border text-[9px] ${
+                                  isEnabled
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    : 'bg-slate-800 text-slate-400 border-white/5'
+                                }`}
+                              >
+                                {isEnabled ? 'ACTIVE' : 'OFF'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+              {filteredFeatures.map((feat) => {
+                const isEnabled = !!config.features?.[feat.key];
+
+                return (
+                  <div
+                    key={feat.key}
+                    className={`p-3 rounded-xl border transition-all duration-200 flex flex-col justify-between ${
+                      isEnabled
+                        ? 'bg-emerald-950/20 border-emerald-500/30 shadow-sm shadow-emerald-950/20'
+                        : 'bg-slate-900/50 border-white/5 opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-bold text-white tracking-tight truncate">{feat.label}</h4>
+                          <span className="font-mono text-[9px] text-slate-400 block truncate">{feat.key}</span>
+                        </div>
+
+                        <Switch
+                          checked={isEnabled}
+                          onChange={() => handleToggleFeature(feat.key)}
+                          size="sm"
+                        />
+                      </div>
+
+                      <p className="text-[11px] text-slate-400 line-clamp-2 mb-2 leading-tight">
+                        {feat.description}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
+                      <span className="text-slate-400 uppercase tracking-wider font-medium">
+                        Scope: <span className="text-slate-300">{feat.scope}</span>
+                      </span>
+
+                      <span
+                        className={`font-semibold px-1.5 py-0.5 rounded border text-[9px] ${
+                          isEnabled
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-slate-800 text-slate-400 border-white/5'
+                        }`}
+                      >
+                        {isEnabled ? 'ACTIVE' : 'OFF'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -478,7 +588,7 @@ export default function DeveloperConsolePage() {
             </div>
           </div>
 
-          <div className="space-y-2.5 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-2">
             {(config.aiProviders || []).map((provider: any, idx: number) => (
               <div
                 key={provider.id}

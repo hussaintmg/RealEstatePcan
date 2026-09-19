@@ -5,6 +5,7 @@ export interface TokenPayload {
   userId: string;
   email: string;
   fullName: string;
+  companyName?: string;
   isDeveloper: boolean;
   isOwner: boolean;
   roleId?: string;

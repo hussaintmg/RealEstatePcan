@@ -3,3 +3,8 @@ node_modules
 /tests/
 /docs/
 .next
+
+# AI property-scanning implementation package
+RealEstate_AI_Scanning_Prompt_Pack.zip
+RealEstate_AI_Scanning_Prompt_Pack/
+storage/

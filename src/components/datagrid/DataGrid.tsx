@@ -275,11 +275,11 @@ export function DataGrid<T extends { _id: string }>({
       </AnimatePresence>
 
       {/* Table Container */}
-      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02] custom-scrollbar max-h-[calc(100vh-240px)]">
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02] custom-scrollbar max-h-[calc(100vh-220px)]">
         <table className="w-full text-left border-collapse text-xs">
           <thead className="sticky top-0 z-10 bg-[#0c1017] border-b border-white/10 text-slate-300 font-medium shadow-sm">
             <tr>
-              <th className="py-2.5 px-3 w-10 text-center">
+              <th className="py-2 px-3 w-10 text-center">
                 <button
                   type="button"
                   onClick={handleHeaderCheckbox}
@@ -296,7 +296,7 @@ export function DataGrid<T extends { _id: string }>({
               </th>
 
               {columns.map((col) => (
-                <th key={col.key} className="py-2.5 px-3.5 whitespace-nowrap">
+                <th key={col.key} className="py-2 px-3 whitespace-nowrap">
                   {col.sortable ? (
                     <button
                       onClick={() => handleSort(col.key)}
@@ -311,7 +311,7 @@ export function DataGrid<T extends { _id: string }>({
                 </th>
               ))}
 
-              {actions && <th className="py-2.5 px-3.5 text-right">Actions</th>}
+              {actions && <th className="py-2 px-3 text-right">Actions</th>}
             </tr>
           </thead>
 
@@ -332,7 +332,7 @@ export function DataGrid<T extends { _id: string }>({
                       checked ? 'bg-blue-500/[0.04]' : ''
                     }`}
                   >
-                    <td className="py-2.5 px-3 text-center">
+                    <td className="py-1.5 px-3 text-center">
                       <button
                         type="button"
                         onClick={() => toggleSelect(item._id)}
@@ -347,12 +347,12 @@ export function DataGrid<T extends { _id: string }>({
                     </td>
 
                     {columns.map((col) => (
-                      <td key={col.key} className="py-2.5 px-3.5 whitespace-nowrap">
+                      <td key={col.key} className="py-1.5 px-3 whitespace-nowrap">
                         {col.render ? col.render(item) : (item as any)[col.key] ?? '-'}
                       </td>
                     ))}
 
-                    {actions && <td className="py-2.5 px-3.5 text-right">{actions(item)}</td>}
+                    {actions && <td className="py-1.5 px-3 text-right">{actions(item)}</td>}
                   </tr>
                 );
               })

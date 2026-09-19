@@ -62,25 +62,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       {/* Top: Brand Header */}
       <div className="flex flex-col flex-shrink-0">
-        <div className={`p-4 border-b border-white/10 flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
+        <div className={`p-3 border-b border-white/10 flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2.5'}`}>
           {branding.headerLogo ? (
             <img
               src={branding.headerLogo}
               alt={branding.websiteName}
-              className="h-8 w-auto object-contain rounded-lg flex-shrink-0"
+              className="h-7 w-auto object-contain rounded-lg flex-shrink-0"
             />
           ) : (
-            <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/30 flex-shrink-0">
-              <Building2 className="w-5 h-5 text-white" />
+            <div className="p-1.5 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/30 flex-shrink-0">
+              <Building2 className="w-4 h-4 text-white" />
             </div>
           )}
 
           {!isCollapsed && (
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-bold text-white tracking-tight truncate">
+              <div className="text-xs font-bold text-white tracking-tight truncate">
                 {branding.websiteName}
               </div>
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider truncate">
+              <div className="text-[9px] text-slate-400 uppercase tracking-wider truncate">
                 {user.isDeveloper
                   ? 'Developer Console'
                   : user.isOwner
@@ -92,19 +92,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Middle: Scrollable Navigation List */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-6 scrollbar-thin scrollbar-thumb-white/10">
+      {/* Middle: Scrollable Navigation List (Compact Vertical Stack to prevent scrolling) */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-3 custom-scrollbar">
         {sections.map((section) => (
-          <div key={section.id} className="space-y-1.5">
+          <div key={section.id} className="space-y-1">
             {!isCollapsed ? (
-              <div className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">
+              <div className="px-2.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate">
                 {section.title}
               </div>
             ) : (
-              <div className="h-px bg-white/10 my-2 mx-2" />
+              <div className="h-px bg-white/10 my-1 mx-2" />
             )}
 
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const active = isRouteActive(pathname, item.href, item.exactMatch);
@@ -113,16 +113,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <Link
                     href={item.href}
                     prefetch={false}
-                    className={`flex items-center rounded-xl transition-all duration-150 ${
-                      isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2.5'
+                    className={`flex items-center rounded-lg transition-all duration-150 ${
+                      isCollapsed ? 'justify-center p-2' : 'justify-between px-2.5 py-1.5'
                     } ${
                       active
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold'
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
                         : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-white' : 'text-slate-400'}`} />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${active ? 'text-white' : 'text-slate-400'}`} />
                       {!isCollapsed && (
                         <span className="text-xs truncate tracking-tight">
                           {item.label}
