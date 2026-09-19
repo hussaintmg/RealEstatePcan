@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { DataGrid, ColumnDef } from '@/components/datagrid/DataGrid';
 import { DirectUploader } from '@/components/common/DirectUploader';
-import { Plus, Building, Check } from 'lucide-react';
+import { Plus, Building, Check, Camera, Layers, Eye, ArrowRight, Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -114,7 +115,14 @@ export default function PropertiesDashboardPage() {
       sortable: true,
       render: (item) => (
         <div>
-          <div className="font-semibold text-white">{item.title}</div>
+          <Link
+            href={`/dashboard/properties/${item._id}/scans`}
+            className="font-semibold text-white hover:text-blue-400 transition-colors inline-flex items-center gap-1.5 group"
+            title="Open Scans & 3D Models for this Property"
+          >
+            <span>{item.title}</span>
+            <ArrowRight className="w-3 h-3 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
+          </Link>
           <div className="text-[11px] text-slate-400">{item.location?.city} • {item.propertyType}</div>
         </div>
       ),
@@ -154,16 +162,41 @@ export default function PropertiesDashboardPage() {
       ),
     },
     {
-      key: 'model3dUrl',
-      header: '3D PlayCanvas',
-      render: (item) =>
-        item.model3dUrl ? (
-          <span className="text-[10px] font-mono text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded">
-            GLB Active
-          </span>
-        ) : (
-          <span className="text-[10px] text-slate-500">Procedural 3D</span>
-        ),
+      key: 'actions',
+      header: 'Live Camera & 3D Actions',
+      render: (item) => (
+        <div className="flex items-center gap-1.5 py-1">
+          {/* Direct Camera Scan Button */}
+          <Link
+            href={`/dashboard/properties/${item._id}/scans/capture`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-md shadow-blue-600/30 hover:shadow-blue-500/50 transition-all border border-blue-400/40"
+            title="Open Live Camera Scanner for this Property"
+          >
+            <Camera className="w-3.5 h-3.5 animate-pulse text-blue-200" />
+            <span>Camera Scan</span>
+          </Link>
+
+          {/* Scans & Floor Plans List */}
+          <Link
+            href={`/dashboard/properties/${item._id}/scans`}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition-all hover:text-white"
+            title="View Scans, 3D Models & 2D Floor Plans"
+          >
+            <Layers className="w-3.5 h-3.5 text-slate-400" />
+            <span>Plans</span>
+          </Link>
+
+          {/* PlayCanvas 3D Studio */}
+          <Link
+            href={`/dashboard/properties/${item._id}/3d`}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-purple-100 text-xs font-medium rounded-lg border border-purple-500/30 transition-all"
+            title="Open PlayCanvas 3D Studio"
+          >
+            <Eye className="w-3.5 h-3.5 text-purple-400" />
+            <span>3D Studio</span>
+          </Link>
+        </div>
+      ),
     },
   ];
 
@@ -171,19 +204,31 @@ export default function PropertiesDashboardPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       <PageHeader
         title="Properties & 3D PlayCanvas Models"
-        description="Strict 20-row backend pagination with persistent cross-page selection and bulk execution."
+        description="Strict 20-row backend pagination with persistent cross-page selection, camera scanning, and 3D walkthroughs."
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Properties' },
         ]}
         primaryAction={
-          <Button
-            variant="primary"
-            onClick={() => setIsModalOpen(true)}
-            leftIcon={<Plus className="w-4 h-4" />}
-          >
-            New Property Listing
-          </Button>
+          <div className="flex items-center gap-2.5">
+            {properties.length > 0 && (
+              <Link
+                href={`/dashboard/properties/${properties[0]._id}/scans/capture`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 transition-all border border-blue-400/40 cursor-pointer"
+                title="Launch Live Camera Scanner"
+              >
+                <Camera className="w-4 h-4 animate-pulse text-blue-200" />
+                <span>Launch Camera Scanner</span>
+              </Link>
+            )}
+            <Button
+              variant="primary"
+              onClick={() => setIsModalOpen(true)}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              New Property Listing
+            </Button>
+          </div>
         }
       />
 

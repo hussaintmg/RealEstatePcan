@@ -24,8 +24,33 @@ export default function CameraCapturePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const propertyId = params?.id as string;
-  const scanId = searchParams?.get('scanId') || '';
+  const initialScanId = searchParams?.get('scanId') || '';
+  const [scanId, setScanId] = useState<string>(initialScanId);
+
+  // If scanId is missing from query string, auto-create a draft scan session
+  useEffect(() => {
+    if (scanId || !propertyId) return;
+
+    fetch(`/api/properties/${propertyId}/scans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: `Camera Scan ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data?._id) {
+          setScanId(json.data._id);
+          window.history.replaceState(
+            null,
+            '',
+            `/dashboard/properties/${propertyId}/scans/capture?scanId=${json.data._id}`
+          );
+        }
+      })
+      .catch((err) => console.warn('Could not auto-create scan session:', err));
+  }, [propertyId, scanId]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const evalCanvasRef = useRef<HTMLCanvasElement>(null);
