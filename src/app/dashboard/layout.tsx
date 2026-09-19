@@ -132,7 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 ? 'p-0 overflow-hidden h-[100dvh]'
                 : isCmsWorkspace
                 ? 'p-0 overflow-hidden h-full'
-                : 'overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 scrollbar-thin scrollbar-thumb-white/10'
+                : 'overflow-y-auto overflow-x-auto p-3 sm:p-4 lg:p-5 custom-scrollbar'
             }`}
           >
             {children}

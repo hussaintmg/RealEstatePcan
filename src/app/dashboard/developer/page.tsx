@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useFeatureFlags } from '@/context/FeatureFlagsContext';
 import {
@@ -20,6 +21,9 @@ import {
   Sparkles,
   Layers,
   Key,
+  ShieldAlert,
+  ArrowLeft,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Switch } from '@/components/ui/Switch';
@@ -32,7 +36,8 @@ import {
 } from '@/lib/features/registry';
 
 export default function DeveloperConsolePage() {
-  const { user, refreshSession } = useAuth();
+  const router = useRouter();
+  const { user, loading: authLoading, logout, refreshSession } = useAuth();
   const { refreshFlags } = useFeatureFlags();
 
   const [config, setConfig] = useState<any>(null);
@@ -44,6 +49,7 @@ export default function DeveloperConsolePage() {
   // Feature Flags Filter & Search
   const [featureSearch, setFeatureSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'features' | 'ai' | 'owner' | 'split'>('features');
 
   // Owner Provisioning Form
   const [ownerForm, setOwnerForm] = useState({ fullName: '', email: '', password: '', phone: '' });
@@ -51,19 +57,31 @@ export default function DeveloperConsolePage() {
   const [ownerSuccess, setOwnerSuccess] = useState(false);
 
   useEffect(() => {
-    fetchConfig();
-  }, []);
+    if (!authLoading) {
+      if (user?.isDeveloper || user?.isOwner) {
+        fetchConfig();
+      } else if (!user) {
+        router.push('/login');
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [authLoading, user]);
 
   const fetchConfig = async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const res = await fetch('/api/developer/config');
+      const res = await fetch('/api/developer/config', { cache: 'no-store' });
+      if (res.status === 401) {
+        router.push('/login');
+        return;
+      }
       const data = await res.json();
-      if (data.success && data.config) {
+      if (res.ok && data.success && data.config) {
         setConfig(data.config);
       } else {
-        setErrorMessage(data.message || 'Failed to load configuration.');
+        setErrorMessage(data.message || data.error || 'Failed to load configuration.');
       }
     } catch {
       setErrorMessage('Network error while connecting to configuration endpoint.');
@@ -165,7 +183,7 @@ export default function DeveloperConsolePage() {
     });
   }, [featureSearch, activeCategory]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-3">
@@ -176,35 +194,91 @@ export default function DeveloperConsolePage() {
     );
   }
 
-  if (!config) {
+  // Non-developer/non-owner role graceful fallback
+  if (user && !user.isDeveloper && !user.isOwner) {
     return (
-      <div className="p-8 text-center bg-rose-500/10 border border-rose-500/20 rounded-2xl max-w-xl mx-auto my-12">
-        <AlertCircle className="w-8 h-8 text-rose-400 mx-auto mb-3" />
-        <h3 className="text-sm font-bold text-white mb-1">Configuration Unavailable</h3>
-        <p className="text-xs text-slate-400 mb-4">{errorMessage || 'SystemConfig document not initialized.'}</p>
-        <Button onClick={fetchConfig}>Retry Connection</Button>
+      <div className="max-w-2xl mx-auto my-12 p-8 bg-slate-900/80 border border-amber-500/20 rounded-3xl text-center shadow-2xl space-y-6">
+        <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-center mx-auto text-amber-400 shadow-inner">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-white tracking-tight">Platform Master Authority Required</h2>
+          <p className="text-xs text-slate-400 leading-relaxed max-w-lg mx-auto">
+            You are authenticated as <span className="text-white font-medium">{user.fullName}</span> ({user.email}).
+            The Master Console is restricted to platform developer and primary owner accounts.
+            You can access your assigned operational workspaces below.
+          </p>
+        </div>
+        <div className="pt-2 flex flex-wrap gap-3 justify-center">
+          <Link href="/dashboard/properties">
+            <Button variant="secondary" className="text-xs">
+              Go to Operations Desk
+            </Button>
+          </Link>
+          <Button
+            variant="ghost"
+            onClick={async () => {
+              await logout();
+              router.push('/login');
+            }}
+            className="text-xs text-slate-400 hover:text-white"
+          >
+            Switch Account
+          </Button>
+        </div>
       </div>
     );
   }
 
+  if (!config) {
+    return (
+      <div className="p-8 text-center bg-rose-500/10 border border-rose-500/20 rounded-2xl max-w-xl mx-auto my-12 space-y-4">
+        <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
+        <div className="space-y-1">
+          <h3 className="text-sm font-bold text-white">Configuration Unavailable</h3>
+          <p className="text-xs text-slate-400">{errorMessage || 'SystemConfig document not initialized.'}</p>
+        </div>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <Button onClick={fetchConfig} size="sm">Retry Connection</Button>
+          <Link href="/dashboard/properties">
+            <Button variant="secondary" size="sm">Dashboard Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const enabledCount = useMemo(() => {
+    if (!config?.features) return 0;
+    return Object.values(config.features).filter(Boolean).length;
+  }, [config]);
+
+  const activeAiCount = useMemo(() => {
+    if (!config?.aiProviders) return 0;
+    return config.aiProviders.filter((p: any) => p.isEnabled).length;
+  }, [config]);
+
   return (
-    <div className="max-w-7xl mx-auto space-y-10 px-4 sm:px-6 lg:px-8 py-4">
+    <div className="max-w-7xl mx-auto space-y-4 px-1 sm:px-2 py-1">
       {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-slate-900/60 to-slate-900/40 border border-emerald-500/20 backdrop-blur-xl shadow-2xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900/60 to-slate-900/40 border border-emerald-500/20 backdrop-blur-xl shadow-xl">
         <div>
-          <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">
-            <ShieldCheck className="w-4 h-4" />
-            <span>Developer Master Console</span>
+          <div className="flex items-center gap-2 text-emerald-400 text-[11px] font-bold uppercase tracking-wider mb-0.5">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Developer &amp; Owner Master Console</span>
+            <span className="ml-2 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono">
+              Live Configuration
+            </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Platform Capabilities &amp; Feature Flags
+          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+            Platform Capabilities &amp; System Configuration
           </h1>
-          <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-            Control platform switches, data scoping, AI failover priorities, and monitor mutation audit logs.
+          <p className="text-xs text-slate-400 mt-0.5 max-w-2xl">
+            Authoritative feature registry, multi-provider AI failover routing, and single-owner provisioning.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-shrink-0">
           <Link href="/dashboard/owner/audit-feed">
             <Button variant="ghost" size="sm" icon={History} className="text-xs text-slate-300">
               Audit Stream
@@ -213,262 +287,493 @@ export default function DeveloperConsolePage() {
           <Button
             onClick={handleSaveConfig}
             disabled={saving}
+            size="sm"
             icon={savedSuccess ? Check : Save}
             className="shadow-lg shadow-emerald-500/20"
           >
-            {savedSuccess ? 'Changes Applied Live!' : 'Save System Configuration'}
+            {savedSuccess ? 'Saved Live!' : 'Save Changes'}
           </Button>
         </div>
       </div>
 
       {errorMessage && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 flex items-center gap-2">
+        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* 1. Feature Flags Registry Section */}
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-emerald-400" />
-              <h2 className="text-lg font-bold text-white tracking-tight">
-                Authoritative Feature Flags
-              </h2>
-            </div>
-            <p className="text-xs text-slate-400">
-              Disabled features are unmounted from navigation and strictly blocked at the API layer with 403 Forbidden.
-            </p>
-          </div>
-
-          <div className="w-full sm:w-72">
-            <SearchInput
-              value={featureSearch}
-              onValueChange={setFeatureSearch}
-              placeholder="Filter feature flags..."
-              size="sm"
-            />
-          </div>
-        </div>
-
-        {/* Category Filter Chips */}
-        <div className="flex flex-wrap gap-2">
+      {/* Navigation Segmented Control */}
+      <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 no-scrollbar border-b border-white/10">
+        <div className="flex items-center gap-1.5 min-w-max">
           <button
-            onClick={() => setActiveCategory('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-              activeCategory === 'all'
+            onClick={() => setActiveTab('features')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'features'
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
                 : 'bg-white/[0.02] text-slate-400 hover:text-slate-200 border border-white/5'
             }`}
           >
-            All Categories
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Feature Flags</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-[10px] font-mono text-emerald-300">
+              {enabledCount}/{FEATURE_REGISTRY.length}
+            </span>
           </button>
-          {FEATURE_CATEGORIES.map((cat) => (
-            <button
-              key={cat.key}
-              onClick={() => setActiveCategory(cat.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                activeCategory === cat.key
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                  : 'bg-white/[0.02] text-slate-400 hover:text-slate-200 border border-white/5'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+
+          <button
+            onClick={() => setActiveTab('ai')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'ai'
+                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
+                : 'bg-white/[0.02] text-slate-400 hover:text-slate-200 border border-white/5'
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span>AI Failover Engine</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-purple-500/20 text-[10px] font-mono text-purple-300">
+              {activeAiCount}/{(config?.aiProviders || []).length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('owner')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'owner'
+                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm'
+                : 'bg-white/[0.02] text-slate-400 hover:text-slate-200 border border-white/5'
+            }`}
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Owner Provisioning</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('split')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'split'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                : 'bg-white/[0.02] text-slate-400 hover:text-slate-200 border border-white/5'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Split View</span>
+          </button>
         </div>
 
-        {/* Feature Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredFeatures.map((feat) => {
-            const isEnabled = !!config.features?.[feat.key];
-
-            return (
-              <div
-                key={feat.key}
-                className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between ${
-                  isEnabled
-                    ? 'bg-emerald-950/10 border-emerald-500/30 shadow-lg shadow-emerald-950/20'
-                    : 'bg-slate-900/40 border-white/5 opacity-80 hover:opacity-100'
-                }`}
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div>
-                      <h3 className="text-sm font-bold text-white tracking-tight">{feat.label}</h3>
-                      <span className="font-mono text-[10px] text-slate-400">{feat.key}</span>
-                    </div>
-
-                    {/* Capsule Switch Component */}
-                    <Switch
-                      checked={isEnabled}
-                      onChange={() => handleToggleFeature(feat.key)}
-                      size="sm"
-                    />
-                  </div>
-
-                  <p className="text-xs text-slate-400 line-clamp-2 mb-4">
-                    {feat.description}
-                  </p>
-                </div>
-
-                <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400 uppercase tracking-wider font-medium">
-                    Scope: <span className="text-slate-300">{feat.scope}</span>
-                  </span>
-
-                  <span
-                    className={`font-semibold px-2 py-0.5 rounded-md border ${
-                      isEnabled
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                        : 'bg-slate-800 text-slate-400 border-white/5'
-                    }`}
-                  >
-                    {isEnabled ? 'Active' : 'Disabled'}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+        <div className="text-[11px] text-slate-400 font-mono hidden md:block">
+          Scope: <span className="text-emerald-400 font-semibold">{user?.isDeveloper ? 'Developer Master' : 'Primary Owner'}</span>
         </div>
       </div>
 
-      {/* 2. AI Multi-Provider Fallback Chain */}
-      <div className="space-y-4 pt-8 border-t border-white/10">
-        <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-purple-400" />
-          <h2 className="text-lg font-bold text-white tracking-tight">
-            AI Multi-Provider Priority Failover Engine
-          </h2>
-        </div>
-        <p className="text-xs text-slate-400">
-          The system queries Provider #1 first. If rate-limited or unavailable, it transparently falls back to Provider #2.
-        </p>
-
+      {/* Main Content Areas */}
+      {/* 1. Feature Flags Tab */}
+      {activeTab === 'features' && (
         <div className="space-y-3">
-          {(config.aiProviders || []).map((provider: any, idx: number) => (
-            <div
-              key={provider.id}
-              className="p-4 bg-slate-900/40 border border-white/5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4"
-            >
-              <div className="flex items-center gap-3">
-                <span className="w-7 h-7 rounded-full bg-purple-500/20 text-purple-300 font-mono text-xs flex items-center justify-center font-bold">
-                  {idx + 1}
-                </span>
-                <div>
-                  <div className="text-sm font-bold text-white flex items-center gap-2">
-                    <span>{provider.name}</span>
-                    <span className="text-[10px] font-mono uppercase bg-white/5 px-2 py-0.5 rounded text-slate-400">
-                      {provider.type}
+          {/* Filters Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <button
+                onClick={() => setActiveCategory('all')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                  activeCategory === 'all'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                    : 'bg-white/[0.02] text-slate-400 hover:text-slate-200 border border-white/5'
+                }`}
+              >
+                All ({FEATURE_REGISTRY.length})
+              </button>
+              {FEATURE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.key}
+                  onClick={() => setActiveCategory(cat.key)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                    activeCategory === cat.key
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                      : 'bg-white/[0.02] text-slate-400 hover:text-slate-200 border border-white/5'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="w-full sm:w-64 flex-shrink-0">
+              <SearchInput
+                value={featureSearch}
+                onValueChange={setFeatureSearch}
+                placeholder="Search feature flags..."
+                size="sm"
+              />
+            </div>
+          </div>
+
+          {/* Feature Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {filteredFeatures.map((feat) => {
+              const isEnabled = !!config.features?.[feat.key];
+
+              return (
+                <div
+                  key={feat.key}
+                  className={`p-3.5 rounded-xl border transition-all duration-200 flex flex-col justify-between ${
+                    isEnabled
+                      ? 'bg-emerald-950/15 border-emerald-500/30 shadow-sm shadow-emerald-950/20'
+                      : 'bg-slate-900/40 border-white/5 opacity-75 hover:opacity-100'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-xs font-bold text-white tracking-tight truncate">{feat.label}</h3>
+                        <span className="font-mono text-[9px] text-slate-400 block truncate">{feat.key}</span>
+                      </div>
+
+                      <Switch
+                        checked={isEnabled}
+                        onChange={() => handleToggleFeature(feat.key)}
+                        size="sm"
+                      />
+                    </div>
+
+                    <p className="text-[11px] text-slate-400 line-clamp-2 mb-2">
+                      {feat.description}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
+                    <span className="text-slate-400 uppercase tracking-wider font-medium">
+                      Scope: <span className="text-slate-300">{feat.scope}</span>
+                    </span>
+
+                    <span
+                      className={`font-semibold px-1.5 py-0.5 rounded border text-[9px] ${
+                        isEnabled
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : 'bg-slate-800 text-slate-400 border-white/5'
+                      }`}
+                    >
+                      {isEnabled ? 'ACTIVE' : 'OFF'}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-400 font-mono mt-0.5">
-                    Model: {provider.modelName || 'default'}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 2. AI Multi-Provider Tab */}
+      {activeTab === 'ai' && (
+        <div className="max-w-3xl mx-auto space-y-4 p-5 rounded-2xl bg-slate-900/40 border border-white/5">
+          <div className="flex items-center gap-2">
+            <Bot className="w-5 h-5 text-purple-400" />
+            <div>
+              <h2 className="text-base font-bold text-white tracking-tight">
+                AI Multi-Provider Priority Failover Engine
+              </h2>
+              <p className="text-xs text-slate-400">
+                Transparent fallback chain: Provider #1 is queried first, failing over to Provider #2 if rate-limited.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2.5 pt-2">
+            {(config.aiProviders || []).map((provider: any, idx: number) => (
+              <div
+                key={provider.id}
+                className="p-3.5 bg-slate-950/60 border border-white/5 rounded-xl flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-300 font-mono text-xs flex items-center justify-center font-bold">
+                    {idx + 1}
+                  </span>
+                  <div>
+                    <div className="text-xs font-bold text-white flex items-center gap-2">
+                      <span>{provider.name}</span>
+                      <span className="text-[9px] font-mono uppercase bg-white/5 px-1.5 py-0.5 rounded text-slate-400">
+                        {provider.type}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      Model: {provider.modelName || 'default'}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <button
-                    disabled={idx === 0}
-                    onClick={() => handleProviderMove(idx, 'up')}
-                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30"
-                  >
-                    <ArrowUp className="w-4 h-4" />
-                  </button>
-                  <button
-                    disabled={idx === config.aiProviders.length - 1}
-                    onClick={() => handleProviderMove(idx, 'down')}
-                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30"
-                  >
-                    <ArrowDown className="w-4 h-4" />
-                  </button>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <button
+                      disabled={idx === 0}
+                      onClick={() => handleProviderMove(idx, 'up')}
+                      className="p-1 rounded bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30"
+                      title="Move Up"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      disabled={idx === config.aiProviders.length - 1}
+                      onClick={() => handleProviderMove(idx, 'down')}
+                      className="p-1 rounded bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30"
+                      title="Move Down"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <Switch
+                    checked={provider.isEnabled}
+                    onChange={(checked) => {
+                      const updated = [...config.aiProviders];
+                      updated[idx].isEnabled = checked;
+                      setConfig({ ...config, aiProviders: updated });
+                    }}
+                    size="sm"
+                  />
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-                <Switch
-                  checked={provider.isEnabled}
-                  onChange={(checked) => {
-                    const updated = [...config.aiProviders];
-                    updated[idx].isEnabled = checked;
-                    setConfig({ ...config, aiProviders: updated });
-                  }}
+      {/* 3. Owner Provisioning Tab */}
+      {activeTab === 'owner' && (
+        <div className="max-w-2xl mx-auto space-y-4 p-5 rounded-2xl bg-slate-900/40 border border-white/5">
+          <div className="flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-emerald-400" />
+            <div>
+              <h2 className="text-base font-bold text-white tracking-tight">
+                Provision Primary Owner Account
+              </h2>
+              <p className="text-xs text-slate-400">
+                The primary Owner has authoritative executive oversight over agency sales, leads, and assets.
+              </p>
+            </div>
+          </div>
+
+          {ownerSuccess ? (
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
+              <Check className="w-4 h-4" />
+              <span>Owner account successfully provisioned and ready for login!</span>
+            </div>
+          ) : (
+            <form onSubmit={handleProvisionOwner} className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={ownerForm.fullName}
+                  onChange={(e) => setOwnerForm({ ...ownerForm, fullName: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-slate-800 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={ownerForm.email}
+                  onChange={(e) => setOwnerForm({ ...ownerForm, email: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-slate-800 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Initial Password</label>
+                <input
+                  type="password"
+                  required
+                  value={ownerForm.password}
+                  onChange={(e) => setOwnerForm({ ...ownerForm, password: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-slate-800 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Phone (Optional)</label>
+                <input
+                  type="text"
+                  value={ownerForm.phone}
+                  onChange={(e) => setOwnerForm({ ...ownerForm, phone: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-slate-800 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+              <div className="sm:col-span-2 pt-1">
+                <Button type="submit" loading={ownerProvisioning} size="sm">
+                  Provision Primary Owner
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* 4. Split Studio View (Side-by-Side: All visible on screen) */}
+      {activeTab === 'split' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Left: Features with custom scrollbar */}
+          <div className="lg:col-span-7 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+                Feature Flags ({enabledCount}/{FEATURE_REGISTRY.length})
+              </span>
+              <div className="w-48">
+                <SearchInput
+                  value={featureSearch}
+                  onValueChange={setFeatureSearch}
+                  placeholder="Filter..."
                   size="sm"
                 />
               </div>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* 3. Owner Provisioning */}
-      <div className="space-y-4 pt-8 border-t border-white/10">
-        <div className="flex items-center gap-2">
-          <UserPlus className="w-4 h-4 text-emerald-400" />
-          <h2 className="text-lg font-bold text-white tracking-tight">
-            Provision Primary Owner Account
-          </h2>
-        </div>
-        <p className="text-xs text-slate-400">
-          The primary Owner oversees company operations, leads, properties, and live audit streams.
-        </p>
-
-        {ownerSuccess ? (
-          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
-            <Check className="w-4 h-4" />
-            <span>Owner account successfully provisioned and ready for login!</span>
+            <div className="max-h-[calc(100vh-210px)] overflow-y-auto pr-1.5 custom-scrollbar space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {filteredFeatures.map((feat) => {
+                  const isEnabled = !!config.features?.[feat.key];
+                  return (
+                    <div
+                      key={feat.key}
+                      className={`p-3 rounded-xl border ${
+                        isEnabled
+                          ? 'bg-emerald-950/15 border-emerald-500/30'
+                          : 'bg-slate-900/40 border-white/5 opacity-75'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-1.5 mb-1">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-semibold text-white truncate">{feat.label}</h4>
+                          <span className="font-mono text-[9px] text-slate-400 block truncate">{feat.key}</span>
+                        </div>
+                        <Switch
+                          checked={isEnabled}
+                          onChange={() => handleToggleFeature(feat.key)}
+                          size="sm"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 line-clamp-1 mb-1">{feat.description}</p>
+                      <div className="text-[9px] font-mono text-slate-500 uppercase">Scope: {feat.scope}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        ) : (
-          <form onSubmit={handleProvisionOwner} className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Full Name</label>
-              <input
-                type="text"
-                required
-                value={ownerForm.fullName}
-                onChange={(e) => setOwnerForm({ ...ownerForm, fullName: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-800 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50"
-              />
+
+          {/* Right: AI and Owner side by side or stacked compactly */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* AI Providers */}
+            <div className="p-3.5 rounded-xl bg-slate-900/50 border border-white/5 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                <Bot className="w-3.5 h-3.5 text-purple-400" />
+                <span>AI Providers Priority Chain</span>
+              </div>
+              <div className="space-y-2">
+                {(config.aiProviders || []).map((provider: any, idx: number) => (
+                  <div
+                    key={provider.id}
+                    className="p-2.5 bg-slate-950/60 border border-white/5 rounded-lg flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-300 font-mono text-[10px] flex items-center justify-center font-bold shrink-0">
+                        {idx + 1}
+                      </span>
+                      <span className="font-semibold text-white truncate">{provider.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        disabled={idx === 0}
+                        onClick={() => handleProviderMove(idx, 'up')}
+                        className="p-1 rounded bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-20"
+                      >
+                        <ArrowUp className="w-3 h-3" />
+                      </button>
+                      <button
+                        disabled={idx === config.aiProviders.length - 1}
+                        onClick={() => handleProviderMove(idx, 'down')}
+                        className="p-1 rounded bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-20"
+                      >
+                        <ArrowDown className="w-3 h-3" />
+                      </button>
+                      <Switch
+                        checked={provider.isEnabled}
+                        onChange={(checked) => {
+                          const updated = [...config.aiProviders];
+                          updated[idx].isEnabled = checked;
+                          setConfig({ ...config, aiProviders: updated });
+                        }}
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Email Address</label>
-              <input
-                type="email"
-                required
-                value={ownerForm.email}
-                onChange={(e) => setOwnerForm({ ...ownerForm, email: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-800 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50"
-              />
+
+            {/* Owner Provisioning Form */}
+            <div className="p-3.5 rounded-xl bg-slate-900/50 border border-white/5 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Provision Primary Owner</span>
+              </div>
+              {ownerSuccess ? (
+                <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Owner successfully provisioned!</span>
+                </div>
+              ) : (
+                <form onSubmit={handleProvisionOwner} className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={ownerForm.fullName}
+                      onChange={(e) => setOwnerForm({ ...ownerForm, fullName: e.target.value })}
+                      className="w-full px-2 py-1 bg-slate-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={ownerForm.email}
+                      onChange={(e) => setOwnerForm({ ...ownerForm, email: e.target.value })}
+                      className="w-full px-2 py-1 bg-slate-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={ownerForm.password}
+                      onChange={(e) => setOwnerForm({ ...ownerForm, password: e.target.value })}
+                      className="w-full px-2 py-1 bg-slate-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Phone</label>
+                    <input
+                      type="text"
+                      value={ownerForm.phone}
+                      onChange={(e) => setOwnerForm({ ...ownerForm, phone: e.target.value })}
+                      className="w-full px-2 py-1 bg-slate-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div className="col-span-2 pt-1">
+                    <Button type="submit" loading={ownerProvisioning} size="sm" className="w-full">
+                      Provision Owner
+                    </Button>
+                  </div>
+                </form>
+              )}
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Initial Password</label>
-              <input
-                type="password"
-                required
-                value={ownerForm.password}
-                onChange={(e) => setOwnerForm({ ...ownerForm, password: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-800 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Phone (Optional)</label>
-              <input
-                type="text"
-                value={ownerForm.phone}
-                onChange={(e) => setOwnerForm({ ...ownerForm, phone: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-800 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/50"
-              />
-            </div>
-            <div className="sm:col-span-2 pt-2">
-              <Button type="submit" loading={ownerProvisioning}>
-                Provision Primary Owner
-              </Button>
-            </div>
-          </form>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
