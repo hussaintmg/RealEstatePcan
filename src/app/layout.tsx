@@ -2,6 +2,7 @@ import '@/styles/globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { FeatureFlagsProvider } from '@/context/FeatureFlagsContext';
 import { DataGridSelectionProvider } from '@/context/DataGridSelectionContext';
+import { DesignTokenProvider } from '@/components/cms/DesignTokenProvider';
 
 export const metadata = {
   title: 'Aura Heights | Luxury Real Estate & 3D PlayCanvas Virtual Walkthroughs',
@@ -16,7 +17,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <FeatureFlagsProvider>
             <DataGridSelectionProvider>
-              {children}
+              <DesignTokenProvider>
+                {children}
+              </DesignTokenProvider>
             </DataGridSelectionProvider>
           </FeatureFlagsProvider>
         </AuthProvider>

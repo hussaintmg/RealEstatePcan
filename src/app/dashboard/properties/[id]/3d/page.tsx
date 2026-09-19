@@ -1,24 +1,37 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { PlayCanvasViewer } from '@/components/3d/PlayCanvasViewer';
+import {
+  RealEstate3DViewer,
+  HotspotItem,
+  CameraBookmark,
+  FloorMapping,
+  UnitMapping,
+} from '@/components/3d/RealEstate3DViewer';
+import { HierarchyInspector } from '@/components/3d/HierarchyInspector';
+import { MappingPanel } from '@/components/3d/MappingPanel';
+import { HotspotEditor } from '@/components/3d/HotspotEditor';
+import { CameraBookmarksEditor } from '@/components/3d/CameraBookmarksEditor';
 import {
   Compass,
   ArrowLeft,
+  LayoutDashboard,
   Save,
-  Plus,
-  Trash2,
-  Layers,
-  MapPin,
-  Sparkles,
-  Camera,
+  UploadCloud,
   CheckCircle2,
+  AlertCircle,
   Loader2,
-  Box,
   Eye,
+  Send,
+  Layers,
+  Sparkles,
+  RefreshCw,
+  Sun,
+  ShieldAlert,
 } from 'lucide-react';
+import { GlbMetadata, HierarchyNode } from '@/lib/3d/types';
 
 export default function Property3DStudioPage() {
   const { id } = useParams();
@@ -27,20 +40,73 @@ export default function Property3DStudioPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState<'model' | 'waypoints' | 'hotspots' | 'floors'>('model');
+  const [publishMessage, setPublishMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Viewer Mode: 'editor' | 'preview'
+  const [viewerMode, setViewerMode] = useState<'editor' | 'preview'>('editor');
+
+  // Active Inspector Tab
+  const [activeTab, setActiveTab] = useState<'hierarchy' | 'camera' | 'mappings' | 'hotspots' | 'environment'>('hierarchy');
+
+  // 3D Experience State
   const [experience, setExperience] = useState({
     title: '3D Spatial Architectural Walkthrough',
+    status: 'ready',
+    currentVersion: 1,
+    publishedVersion: 1,
+    isPublished: false,
     modelUrl: '',
-    format: 'glb',
-    lightingPreset: 'golden_hour',
-    isPublished: true,
-    waypoints: [] as Array<{ id: string; name: string; position: [number, number, number]; lookAt: [number, number, number]; duration: number }>,
-    hotspots: [] as Array<{ id: string; title: string; description: string; specs: string; position: [number, number, number] }>,
-    floorMappings: [] as Array<{ floorId: string; label: string; nodeName: string; levelIndex: number; elevation: number }>,
+    sourceAsset: null as any,
+    modelMetadata: null as GlbMetadata | null,
+    cameraSettings: {
+      defaultPosition: [0, 3, 7] as [number, number, number],
+      defaultTarget: [0, 1, 0] as [number, number, number],
+      fov: 55,
+      minDistance: 1.5,
+      maxDistance: 60,
+      minPitch: -10,
+      maxPitch: 85,
+    },
+    sceneSettings: {
+      rootTransform: {
+        position: [0, 0, 0] as [number, number, number],
+        rotation: [0, 0, 0] as [number, number, number],
+        scale: [1, 1, 1] as [number, number, number],
+      },
+      environmentPreset: 'golden_hour' as any,
+      exposure: 1.0,
+      ambientIntensity: 0.6,
+      shadowQuality: 'medium' as any,
+    },
+    bookmarks: [] as CameraBookmark[],
+    hotspots: [] as HotspotItem[],
+    floorMappings: [] as FloorMapping[],
+    unitMappings: [] as UnitMapping[],
   });
 
+  const [hierarchy, setHierarchy] = useState<HierarchyNode[]>([]);
+  const [selectedNodeName, setSelectedNodeName] = useState<string | null>(null);
+
+  // Live Camera Tracking from Viewer
+  const [currentLiveCamera, setCurrentLiveCamera] = useState<{
+    position: [number, number, number];
+    target: [number, number, number];
+    fov: number;
+  }>({
+    position: [0, 3, 7],
+    target: [0, 1, 0],
+    fov: 55,
+  });
+
+  // Upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load experience on mount
   useEffect(() => {
     fetch(`/api/properties/${propertyId}/3d`)
       .then((res) => res.json())
@@ -50,94 +116,166 @@ export default function Property3DStudioPage() {
             ...prev,
             ...data.experience,
           }));
+          if (data.experience.modelMetadata?.namedNodes) {
+            // Reconstruct minimal hierarchy if not returned directly
+            setHierarchy(
+              data.experience.modelMetadata.namedNodes.map((name: string, i: number) => ({
+                name,
+                index: i,
+                path: name,
+                children: [],
+              }))
+            );
+          }
         }
       })
       .catch((err) => console.error('Error fetching 3D experience:', err))
       .finally(() => setLoading(false));
   }, [propertyId]);
 
+  // Handle Save
   const handleSave = async () => {
     setSaving(true);
     setSaveSuccess(false);
+    setErrorMessage(null);
     try {
       const res = await fetch(`/api/properties/${propertyId}/3d`, {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(experience),
+        body: JSON.stringify({
+          title: experience.title,
+          sceneSettings: experience.sceneSettings,
+          cameraSettings: experience.cameraSettings,
+          bookmarks: experience.bookmarks,
+          hotspots: experience.hotspots,
+          floorMappings: experience.floorMappings,
+          unitMappings: experience.unitMappings,
+        }),
       });
       const data = await res.json();
       if (data.success) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        setErrorMessage(data.error || 'Failed to save experience');
       }
-    } catch (err) {
-      console.error('Error saving 3D experience:', err);
+    } catch (err: any) {
+      setErrorMessage(err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const addWaypoint = () => {
-    const newWp = {
-      id: `wp-${Date.now()}`,
-      name: `Viewpoint ${experience.waypoints.length + 1}`,
-      position: [0, 3, 7] as [number, number, number],
-      lookAt: [0, 1, 0] as [number, number, number],
-      duration: 3.5,
-    };
-    setExperience({ ...experience, waypoints: [...experience.waypoints, newWp] });
+  // Handle Publish
+  const handlePublish = async () => {
+    setPublishing(true);
+    setPublishMessage(null);
+    setErrorMessage(null);
+    try {
+      const res = await fetch(`/api/properties/${propertyId}/3d/publish`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setExperience((prev) => ({
+          ...prev,
+          isPublished: true,
+          status: 'published',
+          publishedVersion: data.experience.publishedVersion,
+        }));
+        setPublishMessage(`Version ${data.experience.publishedVersion} successfully published to public website!`);
+        setTimeout(() => setPublishMessage(null), 4000);
+      } else {
+        setErrorMessage(data.error || 'Failed to publish 3D experience');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message);
+    } finally {
+      setPublishing(false);
+    }
   };
 
-  const removeWaypoint = (index: number) => {
-    setExperience({
-      ...experience,
-      waypoints: experience.waypoints.filter((_, i) => i !== index),
-    });
-  };
+  // Handle GLB Upload
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    const formData = new FormData();
+    formData.append('file', file);
 
-  const addHotspot = () => {
-    const newHotspot = {
-      id: `hs-${Date.now()}`,
-      title: 'Architectural Feature',
-      description: 'Handcrafted luxury finish with premium detailing.',
-      specs: 'Material: Imported Slate',
-      position: [0, 1, 0] as [number, number, number],
-    };
-    setExperience({ ...experience, hotspots: [...experience.hotspots, newHotspot] });
-  };
-
-  const removeHotspot = (index: number) => {
-    setExperience({
-      ...experience,
-      hotspots: experience.hotspots.filter((_, i) => i !== index),
-    });
+    try {
+      const res = await fetch(`/api/properties/${propertyId}/3d/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success && data.experience) {
+        setExperience((prev) => ({
+          ...prev,
+          ...data.experience,
+        }));
+        if (data.hierarchy) {
+          setHierarchy(data.hierarchy);
+        }
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        setUploadError(data.error || 'Upload failed');
+      }
+    } catch (err: any) {
+      setUploadError(err.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#070a0f] flex items-center justify-center text-slate-400 space-x-3">
         <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-        <span className="text-sm">Loading 3D Studio...</span>
+        <span className="text-sm">Loading PlayCanvas 3D Studio...</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#070a0f] text-white flex flex-col">
+    <div className="min-h-screen bg-[#070a0f] text-white flex flex-col font-sans">
       {/* Top Header */}
-      <header className="h-16 border-b border-white/10 bg-[#0d121f]/90 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center space-x-4">
+      <header className="h-16 border-b border-white/10 bg-[#0d121f]/95 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center space-x-3">
           <Link
             href="/dashboard/properties"
             className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all"
+            title="Back to Properties"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="flex items-center space-x-2.5">
+          <Link
+            href="/dashboard"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-all border border-white/10"
+            title="Return to Main Dashboard"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5 text-blue-400" />
+            <span>Dashboard</span>
+          </Link>
+          <div className="flex items-center space-x-3">
             <Compass className="w-5 h-5 text-blue-400 animate-spin-slow" />
             <div>
-              <h1 className="text-sm font-bold text-white tracking-wide">PlayCanvas 3D Studio</h1>
-              <p className="text-[10px] text-slate-400">Configure Spatial Walkthrough & Hotspots</p>
+              <div className="flex items-center space-x-2">
+                <h1 className="text-sm font-bold text-white tracking-wide">PlayCanvas 3D Studio</h1>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
+                    experience.status === 'published'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : experience.status === 'configuration_required'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                  }`}
+                >
+                  {experience.status} (v{experience.currentVersion})
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">Configure Spatial Walkthrough, Floor/Unit Mappings & Hotspots</p>
             </div>
           </div>
         </div>
@@ -146,62 +284,272 @@ export default function Property3DStudioPage() {
           {saveSuccess && (
             <span className="inline-flex items-center space-x-1.5 text-xs text-emerald-400 font-semibold px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in fade-in duration-200">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>3D Experience Saved</span>
+              <span>Changes Saved</span>
             </span>
           )}
+
+          {publishMessage && (
+            <span className="inline-flex items-center space-x-1.5 text-xs text-emerald-400 font-semibold px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in fade-in duration-200">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{publishMessage}</span>
+            </span>
+          )}
+
+          {errorMessage && (
+            <span className="inline-flex items-center space-x-1.5 text-xs text-rose-400 font-semibold px-3 py-1 bg-rose-500/10 border border-rose-500/20 rounded-xl animate-in fade-in duration-200">
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>{errorMessage}</span>
+            </span>
+          )}
+
+          {/* Mode Switcher */}
+          <button
+            onClick={() => setViewerMode(viewerMode === 'editor' ? 'preview' : 'editor')}
+            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+              viewerMode === 'preview'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>{viewerMode === 'preview' ? 'Exit Visitor Preview' : 'Preview as Visitor'}</span>
+          </button>
+
+          {/* Save Button */}
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-white/10 hover:bg-white/15 text-white border border-white/20 rounded-xl text-xs font-semibold transition-all"
           >
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            <span>Save Experience</span>
+            <span>Save Draft</span>
+          </button>
+
+          {/* Publish Button */}
+          <button
+            onClick={handlePublish}
+            disabled={publishing || !experience.modelUrl}
+            className="inline-flex items-center space-x-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/30 transition-all"
+          >
+            {publishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            <span>Publish 3D Experience</span>
           </button>
         </div>
       </header>
 
-      {/* Main Studio Area */}
+      {/* Main Spatial Studio Area */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Left 3D Viewport */}
-        <div className="flex-1 p-6 flex flex-col">
-          <div className="flex-1 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-black/40">
-            <PlayCanvasViewer modelUrl={experience.modelUrl} title={experience.title} className="h-full w-full" />
+        {/* Center / Left: 3D Viewport */}
+        <div className="flex-1 p-6 flex flex-col space-y-4 overflow-hidden">
+          {/* Uploader Card if no model uploaded or replacement desired */}
+          {(!experience.modelUrl || uploading || uploadError) && (
+            <div className="p-4 bg-[#101522] border border-dashed border-blue-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                <UploadCloud className="w-8 h-8 text-blue-400 flex-shrink-0" />
+                <div>
+                  <h4 className="text-xs font-bold text-white">Upload Architectural GLB Container</h4>
+                  <p className="text-[11px] text-slate-400">
+                    Supports binary glTF 2.0 (.glb) packaging geometry, materials, and textures up to 100MB.
+                  </p>
+                  {uploadError && <p className="text-[11px] text-rose-400 mt-1">{uploadError}</p>}
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".glb"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) handleFileUpload(e.target.files[0]);
+                  }}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/30 transition-all flex items-center space-x-1.5"
+                >
+                  {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
+                  <span>{uploading ? 'Validating & Processing...' : 'Select GLB File'}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Interactive PlayCanvas Viewport */}
+          <div className="flex-1 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-black/40 min-h-[460px]">
+            <RealEstate3DViewer
+              modelUrl={experience.modelUrl}
+              title={experience.title}
+              cameraSettings={experience.cameraSettings}
+              sceneSettings={experience.sceneSettings}
+              bookmarks={experience.bookmarks}
+              floorMappings={experience.floorMappings}
+              unitMappings={experience.unitMappings}
+              hotspots={experience.hotspots}
+              mode={viewerMode}
+              selectedNodeName={selectedNodeName}
+              onSelectNode={(nodeName) => setSelectedNodeName(nodeName)}
+              onCameraChange={(cam) => setCurrentLiveCamera(cam)}
+              className="h-full w-full"
+            />
           </div>
         </div>
 
         {/* Right Configuration Inspector */}
-        <div className="w-full lg:w-96 border-l border-white/10 bg-[#0d121f] flex flex-col h-full">
-          {/* Navigation Tabs */}
+        <div className="w-full lg:w-96 border-l border-white/10 bg-[#0d121f] flex flex-col h-full z-10">
+          {/* Top Inspector Navigation Tabs */}
           <div className="flex border-b border-white/10 p-2 gap-1 bg-white/[0.02]">
             <button
-              onClick={() => setActiveTab('model')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activeTab === 'model' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              onClick={() => setActiveTab('hierarchy')}
+              className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all ${
+                activeTab === 'hierarchy' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Model & GLB
+              Hierarchy
             </button>
             <button
-              onClick={() => setActiveTab('waypoints')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activeTab === 'waypoints' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              onClick={() => setActiveTab('camera')}
+              className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all ${
+                activeTab === 'camera' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Waypoints
+              Camera
+            </button>
+            <button
+              onClick={() => setActiveTab('mappings')}
+              className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all ${
+                activeTab === 'mappings' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Mappings
             </button>
             <button
               onClick={() => setActiveTab('hotspots')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+              className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all ${
                 activeTab === 'hotspots' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
               Hotspots
             </button>
+            <button
+              onClick={() => setActiveTab('environment')}
+              className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all ${
+                activeTab === 'environment' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Environment
+            </button>
           </div>
 
-          {/* Tab Content */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-6 text-xs">
-            {activeTab === 'model' && (
+          {/* Inspector Tab Content */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+            {activeTab === 'hierarchy' && (
+              <div className="space-y-4">
+                {/* Model Quick Actions */}
+                <div className="flex items-center justify-between p-2.5 bg-white/[0.02] border border-white/10 rounded-xl">
+                  <div>
+                    <span className="block font-bold text-white text-[11px]">Replace Model</span>
+                    <span className="text-[10px] text-slate-400">Upload a new revision of this building</span>
+                  </div>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-2.5 py-1 bg-white/10 hover:bg-white/15 text-white rounded-lg text-[10px] font-semibold border border-white/15 transition-all"
+                  >
+                    Upload GLB
+                  </button>
+                </div>
+
+                <HierarchyInspector
+                  hierarchy={hierarchy}
+                  metadata={experience.modelMetadata || undefined}
+                  selectedNodeName={selectedNodeName}
+                  onSelectNode={(name) => setSelectedNodeName(name)}
+                  onMapNode={(name, type) => {
+                    if (type === 'floor') {
+                      setExperience((prev) => ({
+                        ...prev,
+                        floorMappings: [
+                          ...prev.floorMappings,
+                          {
+                            floorId: `fl-${Date.now()}`,
+                            floorLabel: `Level ${prev.floorMappings.length + 1}`,
+                            nodeName: name,
+                            levelIndex: prev.floorMappings.length + 1,
+                            elevation: prev.floorMappings.length * 4,
+                          },
+                        ],
+                      }));
+                      setActiveTab('mappings');
+                    } else {
+                      setExperience((prev) => ({
+                        ...prev,
+                        unitMappings: [
+                          ...prev.unitMappings,
+                          {
+                            propertyUnitId: `unit-${Date.now()}`,
+                            unitName: `Residence ${prev.unitMappings.length + 101}`,
+                            nodeName: name,
+                            price: 1500000,
+                            status: 'available',
+                            bedrooms: 3,
+                            bathrooms: 3,
+                            areaSqFt: 2200,
+                          },
+                        ],
+                      }));
+                      setActiveTab('mappings');
+                    }
+                  }}
+                />
+              </div>
+            )}
+
+            {activeTab === 'camera' && (
+              <CameraBookmarksEditor
+                bookmarks={experience.bookmarks}
+                currentCamera={currentLiveCamera}
+                defaultPosition={experience.cameraSettings.defaultPosition}
+                defaultTarget={experience.cameraSettings.defaultTarget}
+                onChangeBookmarks={(bms) => setExperience({ ...experience, bookmarks: bms })}
+                onSetDefaultCamera={(pos, target) => {
+                  setExperience({
+                    ...experience,
+                    cameraSettings: {
+                      ...experience.cameraSettings,
+                      defaultPosition: pos,
+                      defaultTarget: target,
+                    },
+                  });
+                  setSaveSuccess(true);
+                  setTimeout(() => setSaveSuccess(false), 2500);
+                }}
+                onPreviewBookmark={(pos, target, fov) => {
+                  setCurrentLiveCamera({ position: pos, target, fov: fov || 55 });
+                }}
+              />
+            )}
+
+            {activeTab === 'mappings' && (
+              <MappingPanel
+                floorMappings={experience.floorMappings}
+                unitMappings={experience.unitMappings}
+                namedNodes={experience.modelMetadata?.namedNodes || []}
+                onChangeFloors={(floors) => setExperience({ ...experience, floorMappings: floors })}
+                onChangeUnits={(units) => setExperience({ ...experience, unitMappings: units })}
+              />
+            )}
+
+            {activeTab === 'hotspots' && (
+              <HotspotEditor
+                hotspots={experience.hotspots}
+                currentCameraPos={currentLiveCamera.position}
+                onChangeHotspots={(hs) => setExperience({ ...experience, hotspots: hs })}
+              />
+            )}
+
+            {activeTab === 'environment' && (
               <div className="space-y-4">
                 <div>
                   <label className="block text-slate-300 font-semibold mb-1.5">3D Experience Title</label>
@@ -214,165 +562,73 @@ export default function Property3DStudioPage() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1.5">GLB / GLTF Model Asset URL</label>
-                  <input
-                    type="text"
-                    value={experience.modelUrl}
-                    onChange={(e) => setExperience({ ...experience, modelUrl: e.target.value })}
-                    placeholder="https://.../model.glb or /models/villa.glb"
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500 font-mono text-[11px]"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Upload via Media Library or supply an external GLB container asset. Leave empty to use the procedural villa preset.
-                  </p>
-                </div>
-
-                <div>
                   <label className="block text-slate-300 font-semibold mb-1.5">Lighting Environment Preset</label>
                   <select
-                    value={experience.lightingPreset}
-                    onChange={(e) => setExperience({ ...experience, lightingPreset: e.target.value as any })}
+                    value={experience.sceneSettings.environmentPreset}
+                    onChange={(e) =>
+                      setExperience({
+                        ...experience,
+                        sceneSettings: {
+                          ...experience.sceneSettings,
+                          environmentPreset: e.target.value as any,
+                        },
+                      })
+                    }
                     className="w-full px-3 py-2 bg-[#101522] border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500"
                   >
                     <option value="golden_hour">Golden Hour (Warm Architectural Sunlight)</option>
-                    <option value="twilight_night">Twilight Night (Moody Blue Glow)</option>
+                    <option value="twilight_night">Twilight Night (Moody Blue Ambience)</option>
                     <option value="studio_bright">Studio Bright (High Contrast Neutral)</option>
+                    <option value="sunset">Sunset Glow (Vibrant Crimson & Amber)</option>
+                    <option value="dark_presentation">Dark Presentation (Sleek Obsidian)</option>
                   </select>
                 </div>
 
-                <div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/10 rounded-xl">
-                  <div>
-                    <span className="block font-semibold text-white">Publish 3D Experience</span>
-                    <span className="text-[10px] text-slate-400">Expose to public property pages and CMS Page Builder</span>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1.5">Shadow Quality</label>
+                  <select
+                    value={experience.sceneSettings.shadowQuality}
+                    onChange={(e) =>
+                      setExperience({
+                        ...experience,
+                        sceneSettings: {
+                          ...experience.sceneSettings,
+                          shadowQuality: e.target.value as any,
+                        },
+                      })
+                    }
+                    className="w-full px-3 py-2 bg-[#101522] border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="high">High Quality (2048x2048 Soft Shadows)</option>
+                    <option value="medium">Medium Quality (1024x1024 Filtered)</option>
+                    <option value="low">Low Quality (Mobile Optimized)</option>
+                    <option value="off">Disabled (Maximum Performance)</option>
+                  </select>
+                </div>
+
+                <div className="p-3 bg-white/[0.02] border border-white/10 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white">Exposure Rating</span>
+                    <span className="font-mono text-blue-400">{experience.sceneSettings.exposure}x</span>
                   </div>
                   <input
-                    type="checkbox"
-                    checked={experience.isPublished}
-                    onChange={(e) => setExperience({ ...experience, isPublished: e.target.checked })}
-                    className="w-4 h-4 rounded text-blue-600 bg-white/5 border-white/10"
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={experience.sceneSettings.exposure}
+                    onChange={(e) =>
+                      setExperience({
+                        ...experience,
+                        sceneSettings: {
+                          ...experience.sceneSettings,
+                          exposure: parseFloat(e.target.value),
+                        },
+                      })
+                    }
+                    className="w-full accent-blue-500"
                   />
                 </div>
-              </div>
-            )}
-
-            {activeTab === 'waypoints' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-300 font-semibold">Cinematic Camera Waypoints</span>
-                  <button
-                    onClick={addWaypoint}
-                    className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Waypoint</span>
-                  </button>
-                </div>
-
-                {experience.waypoints.length === 0 ? (
-                  <p className="text-slate-500 italic text-[11px] text-center py-6">No custom waypoints defined. The default 5-point tour will play.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {experience.waypoints.map((wp, i) => (
-                      <div key={wp.id} className="p-3 bg-white/[0.02] border border-white/10 rounded-xl space-y-2">
-                        <div className="flex items-center justify-between">
-                          <input
-                            type="text"
-                            value={wp.name}
-                            onChange={(e) => {
-                              const updated = [...experience.waypoints];
-                              updated[i].name = e.target.value;
-                              setExperience({ ...experience, waypoints: updated });
-                            }}
-                            className="bg-transparent font-bold text-white border-b border-transparent hover:border-white/20 focus:border-blue-500 focus:outline-none"
-                          />
-                          <button
-                            onClick={() => removeWaypoint(i)}
-                            className="text-slate-500 hover:text-rose-400 p-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-400">
-                          <div>
-                            <span>X: {wp.position[0]}</span>
-                          </div>
-                          <div>
-                            <span>Y: {wp.position[1]}</span>
-                          </div>
-                          <div>
-                            <span>Z: {wp.position[2]}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'hotspots' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-300 font-semibold">Interactive 3D Hotspots</span>
-                  <button
-                    onClick={addHotspot}
-                    className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Hotspot</span>
-                  </button>
-                </div>
-
-                {experience.hotspots.length === 0 ? (
-                  <p className="text-slate-500 italic text-[11px] text-center py-6">No custom hotspots configured.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {experience.hotspots.map((hs, i) => (
-                      <div key={hs.id} className="p-3 bg-white/[0.02] border border-white/10 rounded-xl space-y-2">
-                        <div className="flex items-center justify-between">
-                          <input
-                            type="text"
-                            value={hs.title}
-                            onChange={(e) => {
-                              const updated = [...experience.hotspots];
-                              updated[i].title = e.target.value;
-                              setExperience({ ...experience, hotspots: updated });
-                            }}
-                            className="bg-transparent font-bold text-white border-b border-transparent hover:border-white/20 focus:border-blue-500 focus:outline-none w-full"
-                          />
-                          <button
-                            onClick={() => removeHotspot(i)}
-                            className="text-slate-500 hover:text-rose-400 p-1 ml-2"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        <input
-                          type="text"
-                          value={hs.description}
-                          placeholder="Feature description..."
-                          onChange={(e) => {
-                            const updated = [...experience.hotspots];
-                            updated[i].description = e.target.value;
-                            setExperience({ ...experience, hotspots: updated });
-                          }}
-                          className="w-full px-2 py-1 bg-white/5 border border-white/10 rounded-lg text-slate-300 text-[10px]"
-                        />
-                        <input
-                          type="text"
-                          value={hs.specs}
-                          placeholder="Technical specs..."
-                          onChange={(e) => {
-                            const updated = [...experience.hotspots];
-                            updated[i].specs = e.target.value;
-                            setExperience({ ...experience, hotspots: updated });
-                          }}
-                          className="w-full px-2 py-1 bg-white/5 border border-white/10 rounded-lg text-blue-400 text-[10px] font-mono"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </div>

@@ -1,6 +1,9 @@
 import { connectToDatabase } from '../db';
 import { CmsLayout, ICmsLayout } from '../../models/CmsLayout';
 import { CmsTheme, ICmsTheme } from '../../models/CmsTheme';
+import { CmsDesignConfig } from '../../models/CmsDesignConfig';
+import { getTopbarTemplateByKey } from './design/publicTopbars';
+import { getFooterTemplateByKey } from './design/publicFooters';
 
 export async function resolveLayout(
   type: 'topbar' | 'navbar' | 'sidebar' | 'footer',
@@ -12,6 +15,37 @@ export async function resolveLayout(
     if (specificId) {
       const specific = await CmsLayout.findById(specificId).lean();
       if (specific) return specific;
+    }
+
+    // Check CmsDesignConfig first
+    const designConfig = await CmsDesignConfig.findOne({ siteKey: 'default' }).lean();
+    if (designConfig?.publicLayouts) {
+      if ((type === 'topbar' || type === 'navbar') && designConfig.publicLayouts.topbarKey) {
+        const tpl = getTopbarTemplateByKey(designConfig.publicLayouts.topbarKey);
+        if (tpl) {
+          const fallback = getBuiltInLayoutFallback(type);
+          return {
+            ...fallback,
+            templateVariant: tpl.layoutStyle,
+            styling: {
+              ...(fallback?.styling || {}),
+              isSticky: tpl.sticky,
+              backdropBlur: tpl.backdropBlur,
+              height: tpl.height,
+            },
+          };
+        }
+      }
+      if (type === 'footer' && designConfig.publicLayouts.footerKey) {
+        const ftr = getFooterTemplateByKey(designConfig.publicLayouts.footerKey);
+        if (ftr) {
+          const fallback = getBuiltInLayoutFallback('footer');
+          return {
+            ...fallback,
+            templateVariant: ftr.layoutStyle,
+          };
+        }
+      }
     }
 
     // Otherwise find default layout of that type

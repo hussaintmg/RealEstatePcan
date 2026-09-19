@@ -8,6 +8,7 @@ import { exportSectionPackage } from '@/lib/cms/packageManager';
 import {
   Sparkles,
   ArrowLeft,
+  LayoutDashboard,
   Save,
   Download,
   Upload,
@@ -167,12 +168,21 @@ export default function SectionStudioPage() {
     <div className="min-h-screen bg-[#070a0f] text-white flex flex-col">
       {/* Header */}
       <header className="h-16 border-b border-white/10 bg-[#0d121f]/90 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <Link
             href="/dashboard/website/cms/pages"
             className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all"
+            title="Return to Pages Manager"
           >
             <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/dashboard"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-all border border-white/10"
+            title="Return to Main Dashboard"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5 text-blue-400" />
+            <span>Dashboard</span>
           </Link>
           <div>
             <div className="flex items-center space-x-2">

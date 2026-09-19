@@ -32,7 +32,7 @@ const LeadSchema = new Schema<ILead>(
     notes: { type: String, default: '' },
     assignedAgent: { type: Schema.Types.ObjectId, ref: 'User' },
     convertedToCustomer: { type: Schema.Types.ObjectId, ref: 'Customer' },
-    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );

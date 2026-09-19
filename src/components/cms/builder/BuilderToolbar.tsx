@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
+  LayoutDashboard,
   Undo2,
   Redo2,
   Monitor,
@@ -56,13 +57,22 @@ export const BuilderToolbar: React.FC<BuilderToolbarProps> = ({
   return (
     <header className="h-16 border-b border-white/10 bg-[#0d121f]/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 select-none">
       {/* Left: Back & Title */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-3">
         <Link
           href="/dashboard/website/cms/pages"
           className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all"
           title="Return to Pages Manager"
         >
           <ArrowLeft className="w-4 h-4" />
+        </Link>
+
+        <Link
+          href="/dashboard"
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-all border border-white/10"
+          title="Return to Main Dashboard"
+        >
+          <LayoutDashboard className="w-3.5 h-3.5 text-blue-400" />
+          <span>Dashboard</span>
         </Link>
 
         <div>

@@ -24,6 +24,18 @@ export interface IProperty extends Document {
   };
   amenities: string[];
   gallery: string[];
+  featuredImage?: string;
+  units?: Array<{
+    _id?: mongoose.Types.ObjectId;
+    id?: string;
+    unitNumber?: string;
+    name?: string;
+    price?: number;
+    status?: 'available' | 'reserved' | 'sold';
+    bedrooms?: number;
+    bathrooms?: number;
+    areaSqFt?: number;
+  }>;
   model3dUrl?: string;
   videoFramesUrl?: string;
   featured: boolean;
@@ -62,6 +74,18 @@ const PropertySchema = new Schema<IProperty>(
     },
     amenities: [{ type: String }],
     gallery: [{ type: String }],
+    featuredImage: { type: String, default: '' },
+    units: [
+      {
+        unitNumber: { type: String },
+        name: { type: String },
+        price: { type: Number, default: 0 },
+        status: { type: String, enum: ['available', 'reserved', 'sold'], default: 'available' },
+        bedrooms: { type: Number, default: 2 },
+        bathrooms: { type: Number, default: 2 },
+        areaSqFt: { type: Number, default: 1200 },
+      },
+    ],
     model3dUrl: { type: String, default: '' },
     videoFramesUrl: { type: String, default: '' },
     featured: { type: Boolean, default: false },

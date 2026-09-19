@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSessionUser, TokenPayload } from './auth';
+import { getSessionUser, TokenPayload, AUTH_COOKIE_NAME } from './auth';
 import { getUserRole, hasPermission, can } from './rbac';
 import { connectToDatabase } from './db';
 import { SystemConfig } from '../models/SystemConfig';
@@ -27,6 +27,21 @@ export function standardError(
     body.fieldErrors = fieldErrors;
   }
   return NextResponse.json(body, { status });
+}
+
+export async function getAuthContext(req?: any): Promise<{ user: TokenPayload; role: any } | null> {
+  try {
+    let tokenOverride: string | undefined;
+    if (req && req.cookies && typeof req.cookies.get === 'function') {
+      tokenOverride = req.cookies.get(AUTH_COOKIE_NAME)?.value;
+    }
+    const sessionUser = await getSessionUser(tokenOverride);
+    if (!sessionUser) return null;
+    const role = await getUserRole(sessionUser.roleId);
+    return { user: sessionUser, role };
+  } catch {
+    return null;
+  }
 }
 
 export async function requireUser(): Promise<

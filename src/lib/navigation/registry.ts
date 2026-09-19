@@ -50,7 +50,7 @@ export const DASHBOARD_NAVIGATION: NavigationSection[] = [
       {
         id: 'dev-cms',
         label: 'Custom CMS Studio',
-        href: '/dashboard/cms',
+        href: '/dashboard/website/cms',
         icon: Layout,
         requiredRole: 'developer',
         requiredFeature: 'cms',

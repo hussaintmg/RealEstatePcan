@@ -118,6 +118,7 @@ export interface RecordAuditParams {
 }
 
 export const logAuditEvent = recordAuditEvent;
+export const recordAudit = recordAuditEvent;
 
 const pendingWrites = new Set<Promise<any>>();
 

@@ -10,14 +10,56 @@ import {
   isRouteActive,
 } from '@/lib/navigation/registry';
 import { Drawer } from '@/components/ui/Drawer';
-import { Building2, LogOut } from 'lucide-react';
+import { Building2, LogOut, ArrowLeft } from 'lucide-react';
 
 export interface MobileDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  isCmsWorkspace?: boolean;
 }
 
-export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
+const CMS_MOBILE_GROUPS = [
+  {
+    title: 'Pages & Visual Studio',
+    items: [
+      { label: 'Public Page Manager', href: '/dashboard/website/cms/pages', icon: Building2 },
+      { label: 'Section Studio', href: '/dashboard/website/cms/components/studio', icon: Building2 },
+    ],
+  },
+  {
+    title: 'Design Foundation',
+    items: [
+      { label: 'Overview', href: '/dashboard/website/cms', icon: Building2 },
+      { label: 'Theme Families (25)', href: '/dashboard/website/cms/themes', icon: Building2 },
+      { label: 'Typography Engine', href: '/dashboard/website/cms/typography', icon: Building2 },
+    ],
+  },
+  {
+    title: 'Layout Builders',
+    items: [
+      { label: 'Public Design (Top/Foot)', href: '/dashboard/website/cms/public-design', icon: Building2 },
+      { label: 'Dashboard Layouts', href: '/dashboard/website/cms/dashboard-design', icon: Building2 },
+    ],
+  },
+  {
+    title: 'Component Styling',
+    items: [
+      { label: 'Component Styles', href: '/dashboard/website/cms/components', icon: Building2 },
+      { label: 'Form Layouts', href: '/dashboard/website/cms/forms', icon: Building2 },
+      { label: 'Auth Templates', href: '/dashboard/website/cms/auth-templates', icon: Building2 },
+    ],
+  },
+  {
+    title: 'Motion & States',
+    items: [
+      { label: 'Skeleton Registry', href: '/dashboard/website/cms/skeletons', icon: Building2 },
+      { label: 'Animations & Hover', href: '/dashboard/website/cms/animations', icon: Building2 },
+      { label: 'Live Preview', href: '/dashboard/website/cms/preview', icon: Building2 },
+    ],
+  },
+];
+
+export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose, isCmsWorkspace = false }) => {
   const pathname = usePathname();
   const { user, branding, permissions, effectivePermissions, features, logout } = useAuth();
 
@@ -65,10 +107,12 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
 
           <div className="min-w-0 flex-1">
             <div className="text-sm font-bold text-white tracking-tight truncate">
-              {branding.websiteName}
+              {isCmsWorkspace ? 'CMS Studio' : branding.websiteName}
             </div>
             <div className="text-[10px] text-slate-400 uppercase tracking-wider truncate">
-              {user.isDeveloper
+              {isCmsWorkspace
+                ? 'Design System & Pages'
+                : user.isDeveloper
                 ? 'Developer Console'
                 : user.isOwner
                 ? 'Owner Control Room'
@@ -79,52 +123,99 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
 
         {/* Middle: Scrollable Navigation Links */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-6">
-          {sections.map((section) => (
-            <div key={section.id} className="space-y-2">
-              <div className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                {section.title}
-              </div>
-
-              <div className="space-y-1">
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = isRouteActive(pathname, item.href, item.exactMatch);
-
-                  return (
-                    <Link
-                      key={item.id}
-                      href={item.href}
-                      prefetch={false}
-                      onClick={handleLinkClick}
-                      className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
-                        active
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold'
-                          : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-white' : 'text-slate-400'}`} />
-                        <span className="text-xs truncate tracking-tight">
-                          {item.label}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {item.badge && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                            {item.badge}
-                          </span>
-                        )}
-                        {item.live && (
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+          {/* If in CMS, provide Back to Dashboard button */}
+          {isCmsWorkspace && (
+            <div className="mb-3 pb-3 border-b border-white/10">
+              <Link
+                href="/dashboard"
+                onClick={handleLinkClick}
+                className="flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold text-amber-300 hover:text-amber-200 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 rounded-xl shadow-sm transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <ArrowLeft className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Back to Main Dashboard</span>
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">
+                  Exit
+                </span>
+              </Link>
             </div>
-          ))}
+          )}
+
+          {isCmsWorkspace
+            ? CMS_MOBILE_GROUPS.map((group) => (
+                <div key={group.title} className="space-y-2">
+                  <div className="px-3 text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">
+                    {group.title}
+                  </div>
+                  <div className="space-y-1">
+                    {group.items.map((item) => {
+                      const active = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          prefetch={false}
+                          onClick={handleLinkClick}
+                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
+                            active
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold'
+                              : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
+                          }`}
+                        >
+                          <span className="text-xs tracking-tight">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+            : sections.map((section) => (
+                <div key={section.id} className="space-y-2">
+                  <div className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    {section.title}
+                  </div>
+
+                  <div className="space-y-1">
+                    {section.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = isRouteActive(pathname, item.href, item.exactMatch);
+
+                      return (
+                        <Link
+                          key={item.id}
+                          href={item.href}
+                          prefetch={false}
+                          onClick={handleLinkClick}
+                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
+                            active
+                              ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold'
+                              : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-white' : 'text-slate-400'}`} />
+                            <span className="text-xs truncate tracking-tight">
+                              {item.label}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {item.badge && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                {item.badge}
+                              </span>
+                            )}
+                            {item.live && (
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            )}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
         </nav>
 
         {/* Bottom: User Card & Sign Out */}

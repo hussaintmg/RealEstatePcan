@@ -5,6 +5,7 @@ import { verifyFeatureAllowed } from '@/middleware/featureGating';
 import { getSessionUser } from '@/lib/auth';
 import { validatePageSlug } from '@/lib/cms/slugValidator';
 import { getSectionDefinition } from '@/lib/cms/sdk/sectionLibrary';
+import { ensureDefaultSystemPages } from '@/lib/cms/defaultPages';
 
 export async function GET(req: NextRequest) {
   const gateCheck = await verifyFeatureAllowed('cms');
@@ -35,6 +36,9 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({ success: true, page });
     }
+
+    // Ensure default system pages exist
+    await ensureDefaultSystemPages();
 
     // List all pages for CMS dashboard
     const pages = await CmsPage.find({ status: { $ne: 'archived' } })
@@ -80,6 +84,7 @@ export async function POST(req: NextRequest) {
       if (heroDef) {
         initialSections.push({
           id: `sec-${Date.now()}-1`,
+          type: heroDef.key,
           sectionKey: heroDef.key,
           sectionVersion: heroDef.version,
           title: heroDef.metadata.name,
@@ -91,6 +96,7 @@ export async function POST(req: NextRequest) {
       if (gridDef) {
         initialSections.push({
           id: `sec-${Date.now()}-2`,
+          type: gridDef.key,
           sectionKey: gridDef.key,
           sectionVersion: gridDef.version,
           title: gridDef.metadata.name,
@@ -102,6 +108,7 @@ export async function POST(req: NextRequest) {
       if (ctaDef) {
         initialSections.push({
           id: `sec-${Date.now()}-3`,
+          type: ctaDef.key,
           sectionKey: ctaDef.key,
           sectionVersion: ctaDef.version,
           title: ctaDef.metadata.name,
@@ -116,6 +123,7 @@ export async function POST(req: NextRequest) {
       if (detailDef) {
         initialSections.push({
           id: `sec-${Date.now()}-1`,
+          type: detailDef.key,
           sectionKey: detailDef.key,
           sectionVersion: detailDef.version,
           title: detailDef.metadata.name,
@@ -127,6 +135,7 @@ export async function POST(req: NextRequest) {
       if (vrDef) {
         initialSections.push({
           id: `sec-${Date.now()}-2`,
+          type: vrDef.key,
           sectionKey: vrDef.key,
           sectionVersion: vrDef.version,
           title: vrDef.metadata.name,

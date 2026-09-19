@@ -46,7 +46,10 @@ export async function POST(req: NextRequest) {
     let savedSection;
 
     if (existing) {
-      Object.assign(existing, body);
+      Object.assign(existing, body, {
+        name: body.metadata?.name || body.name || existing.name,
+        category: body.metadata?.category || body.category || existing.category,
+      });
       existing.updatedAt = new Date();
       savedSection = await existing.save();
 
@@ -60,6 +63,10 @@ export async function POST(req: NextRequest) {
     } else {
       savedSection = await CmsSectionDefinition.create({
         ...body,
+        name: body.metadata?.name || body.name || 'Custom Section',
+        category: body.metadata?.category || body.category || 'Custom',
+        author: body.metadata?.author || body.author || 'Studio User',
+        source: body.metadata?.source || body.source || 'owner',
         createdBy: user.userId,
       });
 

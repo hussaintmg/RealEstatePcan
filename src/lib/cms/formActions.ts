@@ -2,6 +2,7 @@ import { connectToDatabase } from '../db';
 import { Lead } from '../../models/Lead';
 import { Appointment } from '../../models/Appointment';
 import { Property } from '../../models/Property';
+import { User } from '../../models/User';
 import { logAuditEvent } from '../auditLogger';
 
 export type FormActionType =
@@ -51,6 +52,7 @@ export async function executeFormAction(
   context: FormSubmissionContext = {}
 ): Promise<FormSubmissionResult> {
   await connectToDatabase();
+  const owner = await User.findOne({ $or: [{ isOwner: true }, { isDeveloper: true }] });
 
   // Validate basic required contact information
   const fullName = String(formData.fullName || formData.name || 'Anonymous Visitor').trim();
@@ -95,6 +97,7 @@ export async function executeFormAction(
         status: 'new',
         propertyInterest,
         notes: `Submitted via website form [${actionType}] on page "${context.pageSlug || '/'}"\n${notes}`,
+        createdBy: owner?._id,
       });
 
       // Audit log
@@ -158,6 +161,7 @@ export async function executeFormAction(
           status: 'new',
           propertyInterest: propertyId,
           notes: `Created from private viewing request on ${requestedDate.toDateString()} at ${timeSlot}`,
+          createdBy: owner?._id,
         });
       }
 
@@ -178,6 +182,7 @@ export async function executeFormAction(
           source: 'website',
           status: 'contacted',
           notes: 'Subscribed to Architectural Digest & Off-market releases.',
+          createdBy: owner?._id,
         });
       }
 

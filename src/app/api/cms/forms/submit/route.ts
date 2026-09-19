@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error('Form submission error:', err);
     return NextResponse.json(
-      { success: false, error: 'An unexpected system error occurred. Please try again.' },
+      { success: false, error: err.message || 'An unexpected system error occurred. Please try again.' },
       { status: 500 }
     );
   }

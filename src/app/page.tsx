@@ -6,6 +6,8 @@ import { DynamicCmsTopbar } from '@/components/navigation/DynamicCmsTopbar';
 import { DynamicCmsNavbar } from '@/components/navigation/DynamicCmsNavbar';
 import { DynamicCmsFooter } from '@/components/navigation/DynamicCmsFooter';
 import { CmsSectionRenderer } from '@/components/cms/CmsSectionRenderer';
+import { UniversalSectionRenderer } from '@/lib/cms/sdk/UniversalSectionRenderer';
+import { getSectionDefinition } from '@/lib/cms/sdk/sectionLibrary';
 import { PropertyComparisonDrawer, ComparisonProperty } from '@/components/properties/PropertyComparisonDrawer';
 import { useFeatureFlags } from '@/context/FeatureFlagsContext';
 import { ICmsSection } from '@/models/CmsPage';
@@ -234,15 +236,29 @@ export default function HomePage() {
 
       {/* 3. CMS Dynamic Sections */}
       <main className="flex-1 w-full space-y-4">
-        {sortedSections.map((section: any) => (
-          <CmsSectionRenderer
-            key={section.id}
-            section={section}
-            dataContext={dataContext}
-            onCompareToggle={handleCompareToggle}
-            comparisonIds={comparisonList.map((p) => p._id)}
-          />
-        ))}
+        {sortedSections.map((section: any) => {
+          const definition = getSectionDefinition(section.sectionKey || section.type);
+          if (definition || section.customTreeOverride) {
+            return (
+              <UniversalSectionRenderer
+                key={section.id}
+                section={section}
+                definition={definition}
+                dataContext={dataContext}
+                isEditing={false}
+              />
+            );
+          }
+          return (
+            <CmsSectionRenderer
+              key={section.id}
+              section={section}
+              dataContext={dataContext}
+              onCompareToggle={handleCompareToggle}
+              comparisonIds={comparisonList.map((p) => p._id)}
+            />
+          );
+        })}
       </main>
 
       {/* 4. Property Comparison Drawer */}
