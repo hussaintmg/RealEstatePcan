@@ -14,6 +14,16 @@ export async function checkSetupStatusCached(req: NextRequest): Promise<boolean>
     return true;
   }
 
+  // 2. An authenticated user (e.g. Developer Admin, Owner) guarantees setup was completed
+  const token = req.cookies.get(AUTH_COOKIE_NAME)?.value;
+  if (token) {
+    const session = parseTokenPayload(token);
+    if (session?.userId) {
+      isSetupCompletedCache = true;
+      return true;
+    }
+  }
+
   const now = Date.now();
   if (isSetupCompletedCache !== null && now - lastSetupCheckTime < SETUP_CACHE_TTL_MS) {
     return isSetupCompletedCache;
@@ -22,7 +32,7 @@ export async function checkSetupStatusCached(req: NextRequest): Promise<boolean>
   try {
     const url = new URL('/api/setup/status', req.url);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
 
     const res = await fetch(url.toString(), {
       headers: { 'x-middleware-check': '1' },
@@ -67,7 +77,8 @@ export async function proxyHandler(req: NextRequest): Promise<NextResponse> {
     pathname === '/api/setup/status' ||
     pathname === '/api/setup/initialize' ||
     pathname === '/api/setup/upload' ||
-    pathname.startsWith('/api/auth/')
+    pathname.startsWith('/api/auth/') ||
+    pathname === '/api/properties/seed-demo'
   ) {
     return NextResponse.next();
   }

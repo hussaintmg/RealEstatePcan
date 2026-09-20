@@ -109,7 +109,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    response.headers.set('Set-Cookie', createAuthCookieHeader(token));
+    const isProd = process.env.NODE_ENV === 'production';
+    response.cookies.set('auth_token', token, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60,
+      secure: isProd,
+    });
+    response.cookies.set('platform_setup_status', 'completed', {
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 365 * 24 * 60 * 60,
+    });
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
     return response;
