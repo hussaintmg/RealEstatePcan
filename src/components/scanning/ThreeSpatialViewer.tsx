@@ -87,6 +87,21 @@ export const ThreeSpatialViewer: React.FC<ThreeSpatialViewerProps> = ({
     [rooms, activeRoomIndex]
   );
 
+  const handleZoom = useCallback((direction: 'in' | 'out') => {
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (!camera || !controls) return;
+    const factor = direction === 'in' ? 0.75 : 1.35;
+    const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+    offset.multiplyScalar(factor);
+    camera.position.copy(controls.target).add(offset);
+    controls.update();
+  }, []);
+
+  const handleResetCamera = useCallback(() => {
+    applyCameraMode(cameraMode);
+  }, [applyCameraMode, cameraMode]);
+
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
@@ -350,8 +365,8 @@ export const ThreeSpatialViewer: React.FC<ThreeSpatialViewerProps> = ({
 
   return (
     <div className={`relative w-full ${className || 'h-[500px] sm:h-[550px]'} bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl`}>
-      {/* 3D Canvas Mount */}
-      <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+      {/* 3D Canvas Mount with touch-none to prevent scroll locking */}
+      <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing touch-none select-none" />
 
       {/* Context Lost Alert */}
       {isContextLost && (
@@ -364,41 +379,70 @@ export const ThreeSpatialViewer: React.FC<ThreeSpatialViewerProps> = ({
         </div>
       )}
 
-      {/* Top Floating Controls */}
-      <div className={`absolute ${topOffset || 'top-4'} left-3 sm:left-4 right-3 sm:right-4 flex flex-wrap items-center justify-between gap-2 pointer-events-none z-10`}>
+      {/* Touch & One-Handed Navigation Control (Zoom in/out, Reset view) */}
+      <div className="absolute right-2.5 sm:right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 p-1 bg-slate-900/90 backdrop-blur-md rounded-xl border border-slate-800 shadow-xl pointer-events-auto z-20">
+        <button
+          onClick={() => handleZoom('in')}
+          className="p-2 sm:p-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 active:scale-95 transition-all cursor-pointer"
+          title="Zoom In"
+          aria-label="Zoom in"
+        >
+          <ZoomIn className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => handleZoom('out')}
+          className="p-2 sm:p-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 active:scale-95 transition-all cursor-pointer"
+          title="Zoom Out"
+          aria-label="Zoom out"
+        >
+          <ZoomOut className="w-4 h-4" />
+        </button>
+        <div className="w-full h-px bg-slate-800 my-0.5" />
+        <button
+          onClick={handleResetCamera}
+          className="p-2 sm:p-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 active:scale-95 transition-all cursor-pointer"
+          title="Reset Camera Angle"
+          aria-label="Reset camera"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Desktop Top Floating Controls (hidden on mobile to prevent clutter) */}
+      <div className={`hidden sm:flex absolute ${topOffset || 'top-4'} left-4 right-4 items-center justify-between gap-2 pointer-events-none z-10`}>
         {/* Mode Selector */}
         <div className="flex items-center gap-1 p-1 bg-slate-900/90 backdrop-blur-md rounded-xl border border-slate-800 pointer-events-auto shadow-lg">
           <button
             onClick={() => applyCameraMode('dollhouse')}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
               cameraMode === 'dollhouse'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
-            <Box className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+            <Box className="w-3.5 h-3.5" />
             <span>Dollhouse</span>
           </button>
           <button
             onClick={() => applyCameraMode('first_person')}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
               cameraMode === 'first_person'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
-            <Eye className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+            <Eye className="w-3.5 h-3.5" />
             <span>Walkthrough</span>
           </button>
           <button
             onClick={() => applyCameraMode('orbit')}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
               cameraMode === 'orbit'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
-            <RotateCcw className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5" />
             <span>Orbit</span>
           </button>
         </div>
@@ -406,36 +450,106 @@ export const ThreeSpatialViewer: React.FC<ThreeSpatialViewerProps> = ({
         {/* Telemetry & Capability Badge */}
         <div className="flex items-center gap-1.5 pointer-events-auto">
           {loadedFormat && (
-            <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-300 text-[10px] sm:text-[11px] rounded-lg font-mono">
+            <span className="px-2.5 py-1 bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-300 text-[11px] rounded-lg font-mono">
               {loadedFormat}
             </span>
           )}
           {hasWebGPU && (
-            <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-purple-950/60 border border-purple-800/60 text-purple-300 text-[10px] sm:text-[11px] rounded-lg font-mono">
+            <span className="px-2.5 py-1 bg-purple-950/60 border border-purple-800/60 text-purple-300 text-[11px] rounded-lg font-mono">
               WebGPU
             </span>
           )}
-          <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-slate-900/80 backdrop-blur-md border border-slate-800 text-emerald-400 text-[10px] sm:text-[11px] rounded-lg font-mono">
+          <span className="px-2.5 py-1 bg-slate-900/80 backdrop-blur-md border border-slate-800 text-emerald-400 text-[11px] rounded-lg font-mono">
             {fps} FPS
           </span>
         </div>
       </div>
 
+      {/* Mobile Top Subtle FPS Pill (< 640px) */}
+      <div className="sm:hidden absolute top-2.5 right-2.5 pointer-events-none z-10">
+        <span className="px-2 py-0.5 bg-slate-900/80 backdrop-blur-md border border-slate-800 text-emerald-400 text-[10px] rounded-lg font-mono">
+          {fps} FPS
+        </span>
+      </div>
+
+      {/* Mobile Floating Bottom Controls (< 640px) */}
+      <div className="sm:hidden absolute bottom-3 inset-x-3 flex flex-col items-center gap-2 pointer-events-none z-20">
+        {rooms.length > 0 && (
+          <div className="pointer-events-auto flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 shadow-lg text-xs">
+            <Layers className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span className="text-[11px] text-slate-400">Room:</span>
+            <select
+              value={activeRoomIndex}
+              onChange={(e) => {
+                const idx = parseInt(e.target.value, 10);
+                setActiveRoomIndex(idx);
+                if (cameraMode === 'first_person') {
+                  applyCameraMode('first_person');
+                }
+              }}
+              className="bg-slate-800 text-white text-[11px] rounded-lg px-2 py-0.5 border border-slate-700 focus:outline-none max-w-[160px] truncate"
+            >
+              {rooms.map((r, i) => (
+                <option key={r.id} value={i}>
+                  {r.name} {r.areaSqFt ? `(${r.areaSqFt} sq ft)` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="pointer-events-auto flex items-center justify-around gap-1 p-1 bg-slate-900/95 backdrop-blur-xl rounded-2xl border border-slate-800 shadow-2xl w-full max-w-xs">
+          <button
+            onClick={() => applyCameraMode('dollhouse')}
+            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              cameraMode === 'dollhouse'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Box className="w-3.5 h-3.5" />
+            <span>Dollhouse</span>
+          </button>
+          <button
+            onClick={() => applyCameraMode('first_person')}
+            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              cameraMode === 'first_person'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Walk</span>
+          </button>
+          <button
+            onClick={() => applyCameraMode('orbit')}
+            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              cameraMode === 'orbit'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Orbit</span>
+          </button>
+        </div>
+      </div>
+
       {/* Loading Overlay */}
       {isLoading && (
-        <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-          <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-900/90 rounded-xl border border-slate-700 text-xs text-slate-300">
+        <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center pointer-events-none z-30">
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-900/90 rounded-xl border border-slate-700 text-xs text-slate-300 shadow-xl">
             <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
             <span>Loading 3D Spatial Artifacts...</span>
           </div>
         </div>
       )}
 
-      {/* Bottom Floating Room Navigator */}
+      {/* Desktop Bottom Floating Room Navigator */}
       {rooms.length > 0 && (
-        <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 max-w-[calc(100%-24px)] pointer-events-auto flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 sm:py-2 rounded-xl border border-slate-800 shadow-lg z-10">
-          <Layers className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-blue-400 shrink-0" />
-          <span className="text-[11px] sm:text-xs text-slate-400 shrink-0">Room:</span>
+        <div className="hidden sm:flex absolute bottom-4 left-4 max-w-[calc(100%-24px)] pointer-events-auto items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-800 shadow-lg z-10">
+          <Layers className="w-4 h-4 text-blue-400 shrink-0" />
+          <span className="text-xs text-slate-400 shrink-0">Room:</span>
           <select
             value={activeRoomIndex}
             onChange={(e) => {
@@ -445,7 +559,7 @@ export const ThreeSpatialViewer: React.FC<ThreeSpatialViewerProps> = ({
                 applyCameraMode('first_person');
               }
             }}
-            className="bg-slate-800 text-white text-[11px] sm:text-xs rounded-lg px-2 sm:px-2.5 py-1 border border-slate-700 focus:outline-none focus:border-blue-500 max-w-[140px] sm:max-w-xs truncate"
+            className="bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1 border border-slate-700 focus:outline-none focus:border-blue-500 max-w-xs truncate"
           >
             {rooms.map((r, i) => (
               <option key={r.id} value={i}>

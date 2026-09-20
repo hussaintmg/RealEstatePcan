@@ -25,6 +25,7 @@ export const ROUTE_PATTERNS = {
     /^\/investment(\/.*)?$/,
     /^\/locations(\/.*)?$/,
     /^\/private-viewing(\/.*)?$/,
+    /^\/viewer(\/.*)?$/,
   ],
 
   // Auth pages & public auth endpoints

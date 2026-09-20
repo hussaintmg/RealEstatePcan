@@ -7,16 +7,35 @@ import { CalibrationReference } from '@/models/CalibrationReference';
 import { ProcessingJob } from '@/models/ProcessingJob';
 import { connectToDatabase } from '@/lib/db';
 
+import { PropertyScan } from '@/models/PropertyScan';
+import mongoose from 'mongoose';
+
 export async function GET(req: NextRequest, { params }: { params: { scanId: string } }) {
   try {
-    const authRes = await requireUser();
-    if (authRes.error) return authRes.error;
-
-    const featRes = await requireFeature('ai_property_scanning');
-    if (featRes.error) return featRes.error;
-
     await connectToDatabase();
-    const scan = await ScanService.getScan(params.scanId, authRes.user);
+    const authRes = await requireUser();
+
+    let scan: any = null;
+    if (authRes.user) {
+      scan = await ScanService.getScan(params.scanId, authRes.user);
+    } else {
+      // Unauthenticated visitor viewing a 3D tour
+      if (mongoose.Types.ObjectId.isValid(params.scanId)) {
+        scan = await PropertyScan.findById(params.scanId);
+      }
+      if (!scan) {
+        scan = await PropertyScan.findOne({
+          $or: [{ propertyId: params.scanId }, { _id: params.scanId }],
+        }).sort({ createdAt: -1 });
+      }
+      if (!scan) {
+        return NextResponse.json({ success: false, error: 'Scan not found' }, { status: 404 });
+      }
+      // If scan is draft/failed and not public, require login
+      if (!scan.isPublic && scan.status !== 'ready') {
+        return authRes.error || NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+      }
+    }
 
     const [rooms, artifacts, calibration, activeJob] = await Promise.all([
       ScanRoom.find({ scanId: scan._id }).sort({ assignedOrder: 1 }),

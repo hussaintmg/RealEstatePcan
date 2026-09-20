@@ -167,12 +167,12 @@ export const FloorPlanVectorEditor: React.FC<FloorPlanVectorEditorProps> = ({
       {/* Editor Main Canvas & Sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-4 min-h-[480px]">
         {/* SVG Visual Display */}
-        <div className="lg:col-span-3 p-6 flex items-center justify-center bg-slate-900/30 overflow-auto">
-          <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center', transition: 'transform 0.15s ease-out' }}>
+        <div className="lg:col-span-3 p-3 sm:p-6 flex items-center justify-center bg-slate-900/30 overflow-x-auto custom-scrollbar">
+          <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center', transition: 'transform 0.15s ease-out' }} className="max-w-full">
             {svgMarkup ? (
-              <div dangerouslySetInnerHTML={{ __html: svgMarkup }} />
+              <div className="max-w-full [&>svg]:max-w-full [&>svg]:h-auto" dangerouslySetInnerHTML={{ __html: svgMarkup }} />
             ) : (
-              <div className="w-[450px] h-[350px] bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center text-slate-500">
+              <div className="w-full max-w-[450px] aspect-[4/3] bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center text-slate-500 text-xs p-4 text-center">
                 Floor plan preview rendering...
               </div>
             )}

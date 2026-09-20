@@ -102,7 +102,18 @@ export class ScanService {
   static async getScan(scanId: string, user: TokenPayload): Promise<IPropertyScan> {
     await connectToDatabase();
 
-    const scan = await PropertyScan.findById(scanId);
+    let scan = null;
+    if (mongoose.Types.ObjectId.isValid(scanId)) {
+      scan = await PropertyScan.findById(scanId);
+    }
+
+    if (!scan) {
+      // Check if the provided ID was actually a propertyId with an existing scan
+      scan = await PropertyScan.findOne({
+        $or: [{ propertyId: scanId }, { _id: scanId }],
+      }).sort({ createdAt: -1 });
+    }
+
     if (!scan) {
       const err = new Error('Property scan not found');
       (err as any).status = 404;

@@ -63,37 +63,40 @@ export default function StandaloneViewerPage() {
   return (
     <div className="relative w-screen h-screen bg-slate-950 overflow-hidden flex flex-col text-white font-sans">
       {/* Top Floating Brand & Controls Bar (Z-20) */}
-      <header className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 z-20 flex items-center justify-between pointer-events-none gap-2">
-        <div className="pointer-events-auto flex items-center gap-2 sm:gap-3 bg-slate-900/90 backdrop-blur-md px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl border border-slate-800 shadow-xl max-w-[70%] sm:max-w-md">
+      <header className="absolute top-2.5 sm:top-4 left-2.5 sm:left-4 right-2.5 sm:right-4 z-20 flex items-center justify-between pointer-events-none gap-2">
+        <div className="pointer-events-auto flex items-center gap-2 sm:gap-3 bg-slate-900/90 backdrop-blur-md px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl border border-slate-800 shadow-xl max-w-[calc(100%-55px)] sm:max-w-md">
           <button
             onClick={() => router.back()}
-            className="p-1 sm:p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+            className="p-1 sm:p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
             title="Go back"
+            aria-label="Go back"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <Box className="w-4 sm:w-5 h-4 sm:h-5 text-blue-400 shrink-0" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-xs sm:text-sm font-semibold truncate text-white">{scan?.title || '3D Virtual Walkthrough'}</h1>
             <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
-              3D Walkthrough • {rooms.length} Rooms
+              3D Walkthrough • {rooms.length > 0 ? `${rooms.length} Rooms` : 'Architectural Spatial Model'}
             </p>
           </div>
         </div>
 
         <button
           onClick={handleShare}
-          className="pointer-events-auto flex items-center gap-1.5 px-3 py-2 bg-slate-900/90 backdrop-blur-md hover:bg-slate-800 rounded-xl border border-slate-800 text-xs text-slate-300 font-medium transition-all shadow-lg cursor-pointer shrink-0"
+          className="pointer-events-auto flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-2 bg-slate-900/90 backdrop-blur-md hover:bg-slate-800 rounded-xl border border-slate-800 text-xs text-slate-300 font-medium transition-all shadow-lg cursor-pointer shrink-0"
+          title="Share Walkthrough Link"
+          aria-label="Share walkthrough link"
         >
           {copied ? (
             <>
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Link Copied!</span>
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline sm:ml-1.5">Copied!</span>
             </>
           ) : (
             <>
-              <Share2 className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden sm:inline">Share</span>
+              <Share2 className="w-4 h-4 text-blue-400" />
+              <span className="hidden sm:inline sm:ml-1.5">Share</span>
             </>
           )}
         </button>

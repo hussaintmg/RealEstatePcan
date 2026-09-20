@@ -309,63 +309,63 @@ export default function PropertiesDashboardPage() {
             Click any action below to test the complete photogrammetry &amp; 3D visualization pipeline:
           </p>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 relative z-10 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1 relative z-10 text-xs">
             {properties.length > 0 ? (
               <>
                 <Link
                   href={`/dashboard/properties/${properties[0]._id}/scans/capture`}
-                  className="p-2.5 rounded-xl bg-blue-950/40 hover:bg-blue-900/40 border border-blue-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
+                  className="p-3 rounded-xl bg-blue-950/40 hover:bg-blue-900/40 border border-blue-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
                 >
-                  <div className="flex items-center space-x-1.5 text-blue-400 font-bold text-[11px]">
-                    <Camera className="w-3.5 h-3.5 shrink-0" />
+                  <div className="flex items-center space-x-1.5 text-blue-400 font-bold text-xs">
+                    <Camera className="w-4 h-4 shrink-0" />
                     <span>1. Camera Scanner</span>
                   </div>
-                  <span className="text-[10px] text-slate-400 leading-tight">
+                  <span className="text-[11px] text-slate-400 leading-tight">
                     Live camera stream + photo roll batch upload
                   </span>
                 </Link>
 
                 <Link
                   href={`/dashboard/properties/${properties[0]._id}/scans`}
-                  className="p-2.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/40 border border-purple-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
+                  className="p-3 rounded-xl bg-purple-950/40 hover:bg-purple-900/40 border border-purple-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
                 >
-                  <div className="flex items-center space-x-1.5 text-purple-400 font-bold text-[11px]">
-                    <Layers className="w-3.5 h-3.5 shrink-0" />
+                  <div className="flex items-center space-x-1.5 text-purple-400 font-bold text-xs">
+                    <Layers className="w-4 h-4 shrink-0" />
                     <span>2. Plans &amp; Resume</span>
                   </div>
-                  <span className="text-[10px] text-slate-400 leading-tight">
+                  <span className="text-[11px] text-slate-400 leading-tight">
                     Resume queued scan or retry failed scan
                   </span>
                 </Link>
 
                 <Link
                   href={`/dashboard/properties/${properties[0]._id}/3d`}
-                  className="p-2.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
+                  className="p-3 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
                 >
-                  <div className="flex items-center space-x-1.5 text-emerald-400 font-bold text-[11px]">
-                    <Eye className="w-3.5 h-3.5 shrink-0" />
+                  <div className="flex items-center space-x-1.5 text-emerald-400 font-bold text-xs">
+                    <Eye className="w-4 h-4 shrink-0" />
                     <span>3. 3D Studio</span>
                   </div>
-                  <span className="text-[10px] text-slate-400 leading-tight">
+                  <span className="text-[11px] text-slate-400 leading-tight">
                     Dollhouse, floor isolation &amp; bookmarks
                   </span>
                 </Link>
 
                 <Link
                   href={`/viewer/${properties[0]._id}`}
-                  className="p-2.5 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/40 border border-indigo-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
+                  className="p-3 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/40 border border-indigo-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
                 >
-                  <div className="flex items-center space-x-1.5 text-indigo-400 font-bold text-[11px]">
-                    <Compass className="w-3.5 h-3.5 shrink-0" />
+                  <div className="flex items-center space-x-1.5 text-indigo-400 font-bold text-xs">
+                    <Compass className="w-4 h-4 shrink-0" />
                     <span>4. Fullscreen 3D</span>
                   </div>
-                  <span className="text-[10px] text-slate-400 leading-tight">
+                  <span className="text-[11px] text-slate-400 leading-tight">
                     Zero-overlap spatial 3D inspection
                   </span>
                 </Link>
               </>
             ) : (
-              <div className="col-span-4 py-2 text-center text-slate-400 text-xs">
+              <div className="col-span-full py-2 text-center text-slate-400 text-xs">
                 Click <strong className="text-amber-400">⚡ Seed Demo Scans</strong> above to generate test listings immediately!
               </div>
             )}
@@ -373,39 +373,129 @@ export default function PropertiesDashboardPage() {
         </div>
       )}
 
-      <DataGrid
-        title="Active Catalog"
-        data={properties}
-        columns={columns}
-        totalItems={totalItems}
-        totalPages={totalPages}
-        currentPage={currentPage}
-        onPageChange={(page) => setCurrentPage(page)}
-        onSearchChange={(term) => setSearch(term)}
-        onFilterChange={(k, v) => setStatusFilter(v)}
-        onSortChange={(k, dir) => {
-          setSortKey(k);
-          setSortDir(dir);
-        }}
-        filters={[
-          {
-            key: 'status',
-            label: 'Status',
-            options: [
-              { label: 'Available', value: 'available' },
-              { label: 'Sold', value: 'sold' },
-              { label: 'Pending', value: 'pending' },
-            ],
-          },
-        ]}
-        onBulkDelete={async (ids) => {
-          // Parallel bulk delete simulation
-          await new Promise((r) => setTimeout(r, 400));
-        }}
-        onBulkExportPdf={async (ids) => {
-          await new Promise((r) => setTimeout(r, 500));
-        }}
-      />
+      {/* Mobile-First Touch Cards View (< md screens) */}
+      <div className="md:hidden space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Properties ({properties.length})
+          </span>
+          <span className="text-[11px] text-blue-400 font-mono">Page {currentPage} of {totalPages}</span>
+        </div>
+
+        {properties.length === 0 ? (
+          <div className="p-8 text-center bg-slate-900/40 border border-slate-800 rounded-2xl">
+            <Building className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-white">No properties found</p>
+            <p className="text-xs text-slate-400 mt-1">Tap &quot;⚡ Seed Demo Scans&quot; to load sample listings.</p>
+          </div>
+        ) : (
+          properties.map((item) => (
+            <div
+              key={item._id}
+              className="p-4 bg-slate-900/70 border border-slate-800/90 rounded-2xl shadow-xl space-y-3 backdrop-blur-sm"
+            >
+              {/* Header: Title, Status, City */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/dashboard/properties/${item._id}/scans`}
+                    className="font-bold text-sm text-white hover:text-blue-400 transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <span className="truncate">{item.title}</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  </Link>
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    {item.location?.city || 'Islamabad'} • {item.propertyType || 'Villa'}
+                  </div>
+                </div>
+
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                    item.status === 'available'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-slate-700 text-slate-300'
+                  }`}
+                >
+                  {item.status}
+                </span>
+              </div>
+
+              {/* Price & Specs */}
+              <div className="flex items-center justify-between p-2.5 bg-black/40 rounded-xl border border-white/5 text-xs">
+                <span className="text-base font-bold text-emerald-400 font-mono">
+                  ${item.price?.toLocaleString()}
+                </span>
+                <span className="text-slate-300 text-[11px]">
+                  {item.specs?.bedrooms || 3} Beds • {item.specs?.bathrooms || 2} Baths • {item.specs?.areaSqFt} sq ft
+                </span>
+              </div>
+
+              {/* 3 Prominent Mobile Action Buttons */}
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <Link
+                  href={`/dashboard/properties/${item._id}/scans/capture`}
+                  className="flex flex-col items-center justify-center gap-1 py-2.5 px-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl shadow-md shadow-blue-600/30 text-xs font-semibold text-center border border-blue-400/30 cursor-pointer"
+                >
+                  <Camera className="w-4 h-4 text-blue-200" />
+                  <span className="text-[11px] leading-tight">Camera</span>
+                </Link>
+
+                <Link
+                  href={`/dashboard/properties/${item._id}/scans`}
+                  className="flex flex-col items-center justify-center gap-1 py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white rounded-xl text-xs font-medium text-center border border-slate-700 cursor-pointer"
+                >
+                  <Layers className="w-4 h-4 text-slate-400" />
+                  <span className="text-[11px] leading-tight">Plans</span>
+                </Link>
+
+                <Link
+                  href={`/dashboard/properties/${item._id}/3d`}
+                  className="flex flex-col items-center justify-center gap-1 py-2.5 px-2 bg-purple-950/50 hover:bg-purple-900/50 active:scale-95 text-purple-300 rounded-xl text-xs font-medium text-center border border-purple-500/30 cursor-pointer"
+                >
+                  <Eye className="w-4 h-4 text-purple-400" />
+                  <span className="text-[11px] leading-tight">3D Studio</span>
+                </Link>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop DataGrid View (hidden on mobile) */}
+      <div className="hidden md:block">
+        <DataGrid
+          title="Active Catalog"
+          data={properties}
+          columns={columns}
+          totalItems={totalItems}
+          totalPages={totalPages}
+          currentPage={currentPage}
+          onPageChange={(page) => setCurrentPage(page)}
+          onSearchChange={(term) => setSearch(term)}
+          onFilterChange={(k, v) => setStatusFilter(v)}
+          onSortChange={(k, dir) => {
+            setSortKey(k);
+            setSortDir(dir);
+          }}
+          filters={[
+            {
+              key: 'status',
+              label: 'Status',
+              options: [
+                { label: 'Available', value: 'available' },
+                { label: 'Sold', value: 'sold' },
+                { label: 'Pending', value: 'pending' },
+              ],
+            },
+          ]}
+          onBulkDelete={async (ids) => {
+            await new Promise((r) => setTimeout(r, 400));
+          }}
+          onBulkExportPdf={async (ids) => {
+            await new Promise((r) => setTimeout(r, 500));
+          }}
+        />
+      </div>
 
       {/* New Property Modal */}
       <Modal

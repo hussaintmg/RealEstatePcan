@@ -576,50 +576,55 @@ export default function CameraCapturePage() {
       )}
 
       {/* Top HUD Overlay */}
-      <div className="relative z-10 w-full p-4 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent">
+      <div className="relative z-10 w-full px-3 py-2.5 sm:p-4 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent gap-2">
         <button
           onClick={() => router.push(`/dashboard/properties/${propertyId}/scans`)}
-          className="p-2.5 rounded-full bg-slate-900/70 backdrop-blur-md border border-slate-700 hover:bg-slate-800 text-white shadow-lg cursor-pointer"
+          className="p-2 sm:p-2.5 rounded-full bg-slate-900/70 backdrop-blur-md border border-slate-700 hover:bg-slate-800 text-white shadow-lg cursor-pointer shrink-0"
+          title="Back to Scans"
+          aria-label="Back to scans"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Switch Camera Button */}
           <button
             onClick={handleToggleCamera}
             disabled={isCapturing || isUploading}
             title={`Switch to ${facingMode === 'environment' ? 'Front' : 'Rear'} Camera`}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/70 backdrop-blur-md hover:bg-slate-800 disabled:opacity-50 rounded-xl border border-slate-700 text-xs text-slate-200 cursor-pointer shadow-lg"
+            aria-label="Switch camera"
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-900/70 backdrop-blur-md hover:bg-slate-800 disabled:opacity-50 rounded-xl border border-slate-700 text-xs text-slate-200 cursor-pointer shadow-lg"
           >
-            <SwitchCamera className="w-4 h-4 text-blue-400" />
-            <span className="capitalize">{facingMode === 'environment' ? 'Rear' : 'Front'}</span>
+            <SwitchCamera className="w-3.5 h-3.5 text-blue-400" />
+            <span className="capitalize hidden sm:inline">{facingMode === 'environment' ? 'Rear' : 'Front'}</span>
           </button>
 
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/70 backdrop-blur-md rounded-xl border border-slate-700 text-xs">
-            <Compass className="w-4 h-4 text-blue-400" />
-            <span>Coverage: <b className="text-blue-400 font-mono">{coveragePct}%</b></span>
+          <div className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-900/70 backdrop-blur-md rounded-xl border border-slate-700 text-xs">
+            <Compass className="w-3.5 h-3.5 text-blue-400" />
+            <span className="hidden sm:inline">Coverage: </span>
+            <b className="text-blue-400 font-mono">{coveragePct}%</b>
           </div>
 
-          <div className="px-3 py-1.5 bg-slate-900/70 backdrop-blur-md rounded-xl border border-slate-700 text-xs font-mono">
-            {frameCount} Frames
+          <div className="px-2.5 py-1.5 bg-slate-900/70 backdrop-blur-md rounded-xl border border-slate-700 text-xs font-mono">
+            <span className="sm:hidden">{frameCount}f</span>
+            <span className="hidden sm:inline">{frameCount} Frames</span>
           </div>
         </div>
       </div>
 
       {/* Center Reticle & Live Guidance Badge */}
-      <div className="relative z-10 flex flex-col items-center gap-4">
+      <div className="relative z-10 flex flex-col items-center gap-3 px-4 text-center">
         <div
-          className={`w-48 h-48 rounded-full border-2 border-dashed flex items-center justify-center transition-all ${
+          className={`w-40 h-40 sm:w-48 sm:h-48 rounded-full border-2 border-dashed flex items-center justify-center transition-all ${
             isCapturing
               ? 'border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.5)]'
               : 'border-slate-500/50'
           }`}
         >
-          <div className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+          <div className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping" />
         </div>
 
-        <div className="px-4 py-2 bg-slate-900/85 backdrop-blur-md border border-slate-700 rounded-full text-xs font-medium text-center shadow-lg text-slate-200 max-w-sm">
+        <div className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-slate-900/85 backdrop-blur-md border border-slate-700 rounded-full text-[11px] sm:text-xs font-medium text-center shadow-lg text-slate-200 max-w-xs sm:max-w-sm">
           {guidanceMsg}
         </div>
       </div>
@@ -635,7 +640,7 @@ export default function CameraCapturePage() {
       />
 
       {/* Bottom Controls Bar */}
-      <div className="relative z-10 w-full p-4 sm:p-6 pb-8 sm:pb-10 flex flex-col items-center gap-4 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
+      <div className="relative z-10 w-full p-4 sm:p-6 pb-6 sm:pb-10 flex flex-col items-center gap-3.5 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
         {isUploading ? (
           <div className="w-full max-w-sm flex flex-col items-center gap-2">
             <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
@@ -647,60 +652,66 @@ export default function CameraCapturePage() {
             <span className="text-xs text-slate-300 font-mono">Uploading & Assembling Chunks: {uploadProgress}%</span>
           </div>
         ) : (
-          <div className="w-full max-w-xl flex flex-wrap items-center justify-center gap-3">
-            {!isCapturing ? (
-              <>
-                <button
-                  onClick={() => setIsCapturing(true)}
-                  className="flex items-center gap-2.5 px-6 sm:px-8 py-3.5 sm:py-4 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-full font-semibold shadow-xl shadow-blue-600/30 transition-all text-sm sm:text-base cursor-pointer"
-                >
-                  <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
-                  {frameCount > 0 ? 'Resume Capture' : 'Start Capture'}
-                </button>
+          <div className="w-full max-w-md flex flex-col items-center gap-3">
+            {/* Shutter / Action Controls */}
+            <div className="flex items-center justify-center gap-4 w-full">
+              {!isCapturing ? (
+                <>
+                  <button
+                    onClick={() => setIsCapturing(true)}
+                    className="flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3.5 sm:py-4 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-full font-bold shadow-xl shadow-blue-600/30 transition-all text-sm sm:text-base cursor-pointer flex-1 max-w-xs"
+                  >
+                    <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
+                    <span>{frameCount > 0 ? 'Resume Capture' : 'Start Capture'}</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setIsCapturing(false)}
+                    className="flex items-center justify-center gap-2 px-5 py-3 bg-amber-600 hover:bg-amber-500 rounded-full text-xs sm:text-sm font-semibold transition-all cursor-pointer flex-1 max-w-[140px]"
+                  >
+                    <Pause className="w-4 h-4 fill-current" />
+                    <span>Pause</span>
+                  </button>
 
-                <button
-                  onClick={() => mediaInputRef.current?.click()}
-                  disabled={isProcessingMedia}
-                  className="flex items-center gap-2 px-5 py-3.5 bg-slate-800/80 hover:bg-slate-700/80 active:scale-95 text-slate-200 rounded-full font-medium text-xs sm:text-sm border border-slate-700 backdrop-blur-md transition-all cursor-pointer"
-                  title="Upload photos or videos taken with device camera"
-                >
-                  {isProcessingMedia ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-                  ) : (
-                    <FolderUp className="w-4 h-4 text-blue-400" />
-                  )}
-                  {isProcessingMedia ? 'Importing...' : 'Upload Room Photos'}
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setIsCapturing(false)}
-                  className="flex items-center gap-2 px-5 py-3 bg-amber-600 hover:bg-amber-500 rounded-full text-xs sm:text-sm font-medium transition-all cursor-pointer"
-                >
-                  <Pause className="w-4 h-4 fill-current" />
-                  Pause
-                </button>
+                  <button
+                    onClick={handleStopAndUpload}
+                    disabled={frameCount === 0}
+                    className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-full text-xs sm:text-sm font-semibold transition-all shadow-lg shadow-emerald-600/20 cursor-pointer flex-1 max-w-[200px]"
+                  >
+                    <UploadCloud className="w-4 h-4" />
+                    <span>Finish ({frameCount})</span>
+                  </button>
+                </>
+              )}
+            </div>
 
-                <button
-                  onClick={handleStopAndUpload}
-                  disabled={frameCount === 0}
-                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-full text-xs sm:text-sm font-semibold transition-all shadow-lg shadow-emerald-600/20 cursor-pointer"
-                >
-                  <UploadCloud className="w-4 h-4" />
-                  Finish & Upload ({frameCount})
-                </button>
-              </>
-            )}
-
-            {/* Offline cached indicator / upload button */}
+            {/* Offline cached ready-to-upload button */}
             {!isCapturing && frameCount > 0 && (
               <button
                 onClick={handleStopAndUpload}
-                className="flex items-center gap-2 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 rounded-full text-xs sm:text-sm font-semibold text-white transition-all shadow-lg shadow-emerald-600/25 cursor-pointer"
+                className="w-full max-w-xs flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 rounded-full text-xs sm:text-sm font-bold text-white transition-all shadow-lg shadow-emerald-600/25 cursor-pointer"
               >
                 <UploadCloud className="w-4 h-4" />
-                Finish & Upload ({frameCount} Frames)
+                <span>Finish &amp; Upload ({frameCount} Frames)</span>
+              </button>
+            )}
+
+            {/* Upload Room Media Alternative */}
+            {!isCapturing && (
+              <button
+                onClick={() => mediaInputRef.current?.click()}
+                disabled={isProcessingMedia}
+                className="w-full max-w-xs flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900/80 hover:bg-slate-800 active:scale-95 text-slate-300 rounded-xl font-medium text-xs border border-slate-700 backdrop-blur-md transition-all cursor-pointer"
+                title="Upload photos taken with device camera"
+              >
+                {isProcessingMedia ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                ) : (
+                  <FolderUp className="w-3.5 h-3.5 text-blue-400" />
+                )}
+                <span>{isProcessingMedia ? 'Importing Photos...' : 'Upload Photos / Photo Roll'}</span>
               </button>
             )}
           </div>
