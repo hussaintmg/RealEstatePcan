@@ -53,15 +53,28 @@ export async function POST(
       return NextResponse.json({ success: false, error: inspection.error || 'Invalid 3D model container' }, { status: 400 });
     }
 
-    // 2. Persist GLB file safely to disk
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'models');
-    await fs.mkdir(uploadsDir, { recursive: true });
+    // 2. Persist GLB file safely using ScanStorageAdapter (Supabase cloud or local fallback)
+    const storageKey = `models/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const { ScanStorageAdapter } = await import('@/lib/scanning/storageAdapter');
+    await ScanStorageAdapter.saveFile(storageKey, buffer, 'model/gltf-binary');
 
-    const safeFileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const filePath = path.join(uploadsDir, safeFileName);
-    await fs.writeFile(filePath, buffer);
-
-    const publicUrl = `/uploads/models/${safeFileName}`;
+    const storageConfig = await ScanStorageAdapter.getStorageConfig();
+    let publicUrl = `/uploads/${storageKey}`;
+    if (storageConfig.provider === 'supabase' && storageConfig.supabaseUrl) {
+      const { createClient } = await import('@supabase/supabase-js');
+      const keyToUse = storageConfig.serviceKey || storageConfig.anonKey;
+      const supabase = createClient(storageConfig.supabaseUrl, keyToUse);
+      const { data } = supabase.storage.from(storageConfig.bucket).getPublicUrl(storageKey);
+      if (data?.publicUrl) {
+        publicUrl = data.publicUrl;
+      }
+    } else {
+      try {
+        const localPath = path.join(process.cwd(), 'public', 'uploads', storageKey);
+        await fs.mkdir(path.dirname(localPath), { recursive: true });
+        await fs.writeFile(localPath, buffer);
+      } catch {}
+    }
 
     // 3. Find or initialize Property3DExperience
     let experience = await Property3DExperience.findOne({ propertyId });
@@ -79,7 +92,7 @@ export async function POST(
           url: publicUrl,
           fileName: file.name,
           fileSizeBytes: buffer.length,
-          storageKey: safeFileName,
+          storageKey,
           uploadedAt: new Date(),
         },
         modelUrl: publicUrl,
@@ -114,7 +127,7 @@ export async function POST(
         url: publicUrl,
         fileName: file.name,
         fileSizeBytes: buffer.length,
-        storageKey: safeFileName,
+        storageKey,
         uploadedAt: new Date(),
       };
       experience.modelUrl = publicUrl;

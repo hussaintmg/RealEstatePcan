@@ -46,23 +46,33 @@ export const Modal: React.FC<ModalProps> = ({
   const [mounted, setMounted] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const hasInitialFocusedRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const closeOnEscapeRef = useRef(closeOnEscape);
+  closeOnEscapeRef.current = closeOnEscape;
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Lock scroll & handle Escape key
+  // Lock scroll & handle Escape key & initial focus on OPEN only
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      hasInitialFocusedRef.current = false;
+      return;
+    }
 
-    previousActiveElement.current = document.activeElement as HTMLElement;
+    if (!hasInitialFocusedRef.current) {
+      previousActiveElement.current = document.activeElement as HTMLElement;
+    }
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && closeOnEscape) {
+      if (e.key === 'Escape' && closeOnEscapeRef.current) {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
       }
 
       // Simple Tab Trap inside modal
@@ -91,15 +101,26 @@ export const Modal: React.FC<ModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
 
-    // Initial focus
-    if (initialFocusRef?.current) {
-      initialFocusRef.current.focus();
-    } else if (modalRef.current) {
-      const firstFocusable = modalRef.current.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (firstFocusable) {
-        firstFocusable.focus();
+    // Initial focus ONLY once upon opening
+    if (!hasInitialFocusedRef.current) {
+      hasInitialFocusedRef.current = true;
+      if (initialFocusRef?.current) {
+        initialFocusRef.current.focus();
+      } else if (modalRef.current) {
+        // Prioritize actual inputs/textareas/selects inside the modal content body
+        const firstInput = modalRef.current.querySelector<HTMLElement>(
+          'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])'
+        );
+        if (firstInput) {
+          firstInput.focus();
+        } else {
+          const firstFocusable = modalRef.current.querySelector<HTMLElement>(
+            'button:not([aria-label="Close dialog"]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (firstFocusable) {
+            firstFocusable.focus();
+          }
+        }
       }
     }
 
@@ -110,7 +131,7 @@ export const Modal: React.FC<ModalProps> = ({
         previousActiveElement.current.focus();
       }
     };
-  }, [isOpen, closeOnEscape, onClose, initialFocusRef]);
+  }, [isOpen, initialFocusRef]);
 
   if (!mounted || !isOpen) return null;
 

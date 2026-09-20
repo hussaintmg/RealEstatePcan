@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import ThreeSpatialViewer from '@/components/scanning/ThreeSpatialViewer';
 import FloorPlanVectorEditor from '@/components/scanning/FloorPlanVectorEditor';
+import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
 
 export default function PropertyScansPage() {
   const params = useParams();
@@ -39,6 +40,8 @@ export default function PropertyScansPage() {
   const [creating, setCreating] = useState<boolean>(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<'list' | 'workspace'>('list');
+  const [deleteScanId, setDeleteScanId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const fetchScans = async () => {
     try {
@@ -114,20 +117,30 @@ export default function PropertyScansPage() {
     }
   };
 
-  const handleDeleteScan = async (scanId: string) => {
-    if (!confirm('Are you sure you want to permanently delete this spatial scan and its 3D artifacts?')) return;
+  const handleDeleteScan = (scanId: string) => {
+    setDeleteScanId(scanId);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteScanId) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/scans/${scanId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/scans/${deleteScanId}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.success) {
-        setScans((prev) => prev.filter((s) => s._id !== scanId));
-        if (selectedScan?._id === scanId) {
-          const remaining = scans.filter((s) => s._id !== scanId);
+        setScans((prev) => prev.filter((s) => s._id !== deleteScanId));
+        if (selectedScan?._id === deleteScanId) {
+          const remaining = scans.filter((s) => s._id !== deleteScanId);
           setSelectedScan(remaining.length > 0 ? remaining[0] : null);
         }
+        setDeleteScanId(null);
+      } else {
+        setError(json.error || 'Failed to delete scan');
       }
-    } catch (err) {
-      console.error('Delete failed:', err);
+    } catch (err: any) {
+      setError(err.message || 'Network error deleting scan');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -477,6 +490,19 @@ export default function PropertyScansPage() {
           )}
         </div>
       </div>
+
+      {/* Universal Backend Scan Deletion Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={!!deleteScanId}
+        onClose={() => setDeleteScanId(null)}
+        onConfirm={handleDeleteConfirm}
+        loading={isDeleting}
+        title="Permanently Delete Spatial Scan?"
+        description="This will permanently delete this room scan, reconstructed 3D GLB models, point clouds, floorplans, and any cloud files stored in Supabase. This operation is verified on the backend and cannot be undone."
+        confirmText="Permanently Delete Scan"
+        cancelLabel="Cancel"
+        severity="danger"
+      />
     </div>
   );
 }

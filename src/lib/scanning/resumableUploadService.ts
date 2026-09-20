@@ -266,6 +266,79 @@ export class ResumableUploadService {
   }
 
   /**
+   * Finalizes direct-to-cloud upload from frontend (bypassing serverless payload limits).
+   */
+  static async finalizeDirectUpload(
+    scanId: string,
+    storageKey: string,
+    totalBytes: number,
+    totalFrames: number,
+    checksumSha256: string,
+    user: TokenPayload
+  ): Promise<{
+    success: boolean;
+    jobId: string;
+    totalBytes: number;
+    totalFrames: number;
+    storageKey: string;
+  }> {
+    await connectToDatabase();
+    const scan = await ScanService.getScan(scanId, user);
+
+    scan.totalSizeBytes = totalBytes;
+    scan.totalFramesCount = totalFrames;
+    await scan.save();
+
+    let session = await CaptureSession.findOne({ scanId: scan._id }).sort({ createdAt: -1 });
+    if (!session) {
+      session = new CaptureSession({
+        scanId: scan._id,
+        totalChunks: 1,
+        chunkSizeBytes: totalBytes,
+        totalBytesExpected: totalBytes,
+        totalBytesUploaded: totalBytes,
+        chunks: [],
+      });
+    }
+    session.isFinalized = true;
+    session.finalizedAt = new Date();
+    session.assembledFileKey = storageKey;
+    session.assembledChecksumSha256 = checksumSha256;
+    session.totalBytesUploaded = totalBytes;
+    await session.save();
+
+    await ScanService.transitionScanState(
+      scanId,
+      'processing',
+      user,
+      `Direct Cloud upload verified (SHA: ${checksumSha256 ? checksumSha256.slice(0, 8) : 'cloud'}...). Spawning reconstruction job.`
+    );
+
+    const job = await JobQueueService.enqueueJob(scanId, user);
+
+    await ScanService.logAudit(
+      scan._id,
+      'upload_finalized',
+      `Direct Cloud upload finalized: ${storageKey} (${totalBytes} bytes). Job ${job._id} dispatched.`,
+      user,
+      {
+        totalBytes,
+        totalFrames,
+        checksumSha256,
+        jobId: job._id,
+      }
+    );
+
+    return {
+      success: true,
+      jobId: job._id.toString(),
+      totalBytes,
+      totalFrames,
+      storageKey,
+    };
+  }
+
+  /**
    * Retrieves current upload session progress and missing chunk indices.
    */
   static async getSessionStatus(

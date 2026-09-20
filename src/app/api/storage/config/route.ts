@@ -15,14 +15,18 @@ export async function GET() {
 
   const config = await SystemConfig.findOne().lean();
   const storageProvider = config?.storageProvider || 'supabase';
+  const url = config?.supabaseConfig?.url || process.env.SUPABASE_URL || '';
+  const anonKey = config?.supabaseConfig?.anonKey || process.env.SUPABASE_ANON_KEY || '';
+  const bucket = config?.supabaseConfig?.bucket || 'real-estate-assets';
 
   return NextResponse.json({
     success: true,
     storageProvider,
+    isConfigured: !!(url && anonKey),
     supabase: {
-      url: config?.supabaseConfig?.url || process.env.SUPABASE_URL || '',
-      anonKey: config?.supabaseConfig?.anonKey || process.env.SUPABASE_ANON_KEY || '',
-      bucket: config?.supabaseConfig?.bucket || 'real-estate-assets',
+      url,
+      anonKey,
+      bucket,
     },
   });
 }

@@ -4,6 +4,7 @@ export interface ICmsAsset extends Document {
   title: string;
   filename: string;
   url: string;
+  storageKey?: string;
   storageProvider: 'supabase' | 'local';
   fileType: 'image' | 'video' | '3d_model' | 'document' | 'icon';
   mimeType: string;
@@ -27,6 +28,7 @@ const CmsAssetSchema = new Schema<ICmsAsset>(
     title: { type: String, required: true, trim: true },
     filename: { type: String, required: true, trim: true },
     url: { type: String, required: true, trim: true },
+    storageKey: { type: String, default: '' },
     storageProvider: { type: String, enum: ['supabase', 'local'], default: 'local' },
     fileType: {
       type: String,

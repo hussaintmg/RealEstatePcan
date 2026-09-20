@@ -22,6 +22,7 @@ import { CameraManager, CameraStreamResult } from '@/lib/scanning/cameraManager'
 import { QualityEngine, QualityAssessmentResult } from '@/lib/scanning/qualityEngine';
 import { PoseMath, DeviceAngles } from '@/lib/scanning/poseMath';
 import { OfflineFrameStore, CachedScanFrame } from '@/lib/scanning/offlineFrameStore';
+import { createClient } from '@supabase/supabase-js';
 
 export default function CameraCapturePage() {
   const params = useParams();
@@ -448,7 +449,75 @@ export default function CameraCapturePage() {
         offset += fb.byteLength;
       }
 
-      // Split into 2MB chunks
+      // Check active storage provider config
+      let storageConfig: any = null;
+      try {
+        const scRes = await fetch('/api/storage/config');
+        storageConfig = await scRes.json();
+      } catch {}
+
+      const useSupabaseDirect =
+        storageConfig?.success &&
+        storageConfig.storageProvider === 'supabase' &&
+        storageConfig.supabase?.url &&
+        storageConfig.supabase?.anonKey;
+
+      if (useSupabaseDirect) {
+        setGuidanceMsg(`Uploading capture (${(totalBytes / (1024 * 1024)).toFixed(2)} MB) directly to Cloud Storage...`);
+        setUploadProgress(25);
+
+        try {
+          const supabase = createClient(storageConfig.supabase.url, storageConfig.supabase.anonKey);
+          const storageKey = `scans/${scanId}/source/capture_assembled.bin`;
+          const fullSha = await computeSha256(fullCaptureBuffer);
+
+          setUploadProgress(50);
+          const { error: uploadErr } = await supabase.storage
+            .from(storageConfig.supabase.bucket || 'real-estate-assets')
+            .upload(storageKey, fullCaptureBuffer, {
+              contentType: 'application/octet-stream',
+              upsert: true,
+            });
+
+          if (uploadErr) {
+            console.warn('Supabase direct upload warning, falling back to chunked upload:', uploadErr.message);
+          } else {
+            setUploadProgress(85);
+            setGuidanceMsg('Verifying cloud archive and spawning 3D reconstruction...');
+
+            const finalizeRes = await fetch(`/api/scans/${scanId}/upload/finalize`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                directUpload: true,
+                storageKey,
+                totalBytes,
+                totalFrames: cachedFrames.length,
+                checksumSha256: fullSha,
+              }),
+            });
+
+            const finalizeJson = await finalizeRes.json();
+            if (!finalizeJson.success) {
+              throw new Error(finalizeJson.error || 'Upload finalization failed');
+            }
+
+            setUploadProgress(100);
+            setGuidanceMsg('Direct upload complete! 3D reconstruction pipeline enqueued.');
+
+            await OfflineFrameStore.clearScan(scanId).catch(() => {});
+
+            setTimeout(() => {
+              router.push(`/dashboard/properties/${propertyId}/scans`);
+            }, 1200);
+            return;
+          }
+        } catch (cloudErr: any) {
+          console.warn('Direct cloud upload exception, attempting server chunked upload fallback:', cloudErr);
+        }
+      }
+
+      // Split into 2MB chunks (Local fallback or dev mode)
       const CHUNK_SIZE = 2 * 1024 * 1024;
       const totalChunks = Math.max(Math.ceil(totalBytes / CHUNK_SIZE), 1);
 

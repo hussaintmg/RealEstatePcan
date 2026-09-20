@@ -108,6 +108,33 @@ export class ScanStorageAdapter {
   }
 
   /**
+   * Retrieves active storage configuration from database or env.
+   */
+  public static async getStorageConfig() {
+    try {
+      await connectToDatabase();
+      const config = await SystemConfig.findOne().select('storageProvider supabaseConfig').lean();
+
+      const provider = (config as any)?.storageProvider || 'local';
+      const supabaseUrl = (config as any)?.supabaseConfig?.url || process.env.SUPABASE_URL || '';
+      const anonKey = (config as any)?.supabaseConfig?.anonKey || process.env.SUPABASE_ANON_KEY || '';
+      const serviceKey =
+        (config as any)?.supabaseConfig?.serviceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+      const bucket = (config as any)?.supabaseConfig?.bucket || 'real-estate-assets';
+
+      return { provider, supabaseUrl, anonKey, serviceKey, bucket };
+    } catch {
+      return {
+        provider: 'local',
+        supabaseUrl: process.env.SUPABASE_URL || '',
+        anonKey: process.env.SUPABASE_ANON_KEY || '',
+        serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+        bucket: 'real-estate-assets',
+      };
+    }
+  }
+
+  /**
    * Saves a binary chunk or file to secure storage (Supabase or local private storage).
    */
   static async saveFile(
@@ -119,14 +146,7 @@ export class ScanStorageAdapter {
     const sha256 = crypto.createHash('sha256').update(buffer).digest('hex');
     const detectedMime = this.sniffMimeType(buffer, contentType);
 
-    await connectToDatabase();
-    const config = await SystemConfig.findOne().select('storageProvider supabaseConfig').lean();
-
-    const provider = (config as any)?.storageProvider || 'local';
-    const supabaseUrl = (config as any)?.supabaseConfig?.url || process.env.SUPABASE_URL;
-    const serviceKey =
-      (config as any)?.supabaseConfig?.serviceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const bucket = (config as any)?.supabaseConfig?.bucket || 'real-estate-assets';
+    const { provider, supabaseUrl, serviceKey, bucket } = await this.getStorageConfig();
 
     if (provider === 'supabase' && supabaseUrl && serviceKey) {
       try {
@@ -159,15 +179,7 @@ export class ScanStorageAdapter {
    */
   static async readFile(storageKey: string): Promise<Buffer | null> {
     const targetPath = this.assertSafeKey(storageKey);
-
-    await connectToDatabase();
-    const config = await SystemConfig.findOne().select('storageProvider supabaseConfig').lean();
-
-    const provider = (config as any)?.storageProvider || 'local';
-    const supabaseUrl = (config as any)?.supabaseConfig?.url || process.env.SUPABASE_URL;
-    const serviceKey =
-      (config as any)?.supabaseConfig?.serviceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const bucket = (config as any)?.supabaseConfig?.bucket || 'real-estate-assets';
+    const { provider, supabaseUrl, serviceKey, bucket } = await this.getStorageConfig();
 
     if (provider === 'supabase' && supabaseUrl && serviceKey) {
       try {
@@ -190,10 +202,21 @@ export class ScanStorageAdapter {
   }
 
   /**
-   * Deletes a single file from storage.
+   * Deletes a single file from storage (both Supabase cloud and local fallback).
    */
   static async deleteFile(storageKey: string): Promise<void> {
     const targetPath = this.assertSafeKey(storageKey);
+    const { provider, supabaseUrl, serviceKey, bucket } = await this.getStorageConfig();
+
+    if (provider === 'supabase' && supabaseUrl && serviceKey) {
+      try {
+        const supabase = createClient(supabaseUrl, serviceKey);
+        await supabase.storage.from(bucket).remove([storageKey]);
+      } catch (err: any) {
+        console.warn('Failed to delete file from Supabase storage:', err.message);
+      }
+    }
+
     if (fs.existsSync(targetPath)) {
       try {
         fs.unlinkSync(targetPath);
@@ -202,10 +225,30 @@ export class ScanStorageAdapter {
   }
 
   /**
-   * Recursively deletes an entire directory tree (source chunks, assembled media, artifacts).
+   * Recursively deletes an entire directory tree from Supabase cloud and local disk.
    */
   static async deleteDirectory(storagePrefix: string): Promise<void> {
     const targetDir = this.assertSafeKey(storagePrefix);
+    const { provider, supabaseUrl, serviceKey, bucket } = await this.getStorageConfig();
+
+    if (provider === 'supabase' && supabaseUrl && serviceKey) {
+      try {
+        const supabase = createClient(supabaseUrl, serviceKey);
+        // List all files in the directory prefix
+        const { data: files } = await supabase.storage.from(bucket).list(storagePrefix, {
+          limit: 1000,
+          sortBy: { column: 'name', order: 'asc' },
+        });
+
+        if (files && files.length > 0) {
+          const fileKeys = files.map((f) => `${storagePrefix}/${f.name}`);
+          await supabase.storage.from(bucket).remove(fileKeys);
+        }
+      } catch (err: any) {
+        console.warn('Failed to clean Supabase directory prefix:', err.message);
+      }
+    }
+
     if (!fs.existsSync(targetDir)) return;
 
     const rmDirRecursive = (dir: string) => {

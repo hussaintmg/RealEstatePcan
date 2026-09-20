@@ -91,7 +91,15 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    await CmsAsset.findByIdAndDelete(id);
+    const asset = await CmsAsset.findById(id);
+    if (asset) {
+      const keyToDelete = asset.storageKey || asset.filename;
+      if (keyToDelete) {
+        const { ScanStorageAdapter } = await import('@/lib/scanning/storageAdapter');
+        await ScanStorageAdapter.deleteFile(keyToDelete).catch(() => {});
+      }
+      await CmsAsset.findByIdAndDelete(id);
+    }
     return NextResponse.json({ success: true, message: 'Asset deleted' });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

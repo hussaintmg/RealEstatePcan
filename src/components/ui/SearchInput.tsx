@@ -74,6 +74,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           {value && !disabled && (
             <button
               type="button"
+              tabIndex={-1}
               onClick={handleClear}
               className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
               aria-label="Clear search"

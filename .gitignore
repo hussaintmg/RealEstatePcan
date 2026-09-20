@@ -7,4 +7,6 @@ node_modules
 # AI property-scanning implementation package
 RealEstate_AI_Scanning_Prompt_Pack.zip
 RealEstate_AI_Scanning_Prompt_Pack/
-storage/
+storage/
+scripts/poll-prod-deployment.js
+scripts/test-prod-demo.js

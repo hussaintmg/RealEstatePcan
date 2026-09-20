@@ -51,8 +51,16 @@ export default function DeveloperConsolePage() {
   // Feature Flags Filter & Search
   const [featureSearch, setFeatureSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'features' | 'ai' | 'owner' | 'split'>('features');
+  const [activeTab, setActiveTab] = useState<'features' | 'storage' | 'ai' | 'owner' | 'split'>('features');
   const [viewMode, setViewMode] = useState<'rails' | 'grid'>('rails');
+
+  // Storage Testing State
+  const [testingStorage, setTestingStorage] = useState(false);
+  const [storageTestResult, setStorageTestResult] = useState<{
+    success: boolean;
+    message: string;
+    latencyMs?: number;
+  } | null>(null);
 
   // Owner Provisioning Form
   const [ownerForm, setOwnerForm] = useState({ fullName: '', email: '', password: '', phone: '' });
@@ -145,6 +153,43 @@ export default function DeveloperConsolePage() {
       setErrorMessage('Error communicating with system configuration service.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTestStorage = async () => {
+    setTestingStorage(true);
+    setStorageTestResult(null);
+    try {
+      const res = await fetch('/api/developer/storage/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: config?.supabaseConfig?.url || '',
+          anonKey: config?.supabaseConfig?.anonKey || '',
+          serviceRoleKey: config?.supabaseConfig?.serviceRoleKey || '',
+          bucket: config?.supabaseConfig?.bucket || 'real-estate-assets',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStorageTestResult({
+          success: true,
+          message: data.message,
+          latencyMs: data.latencyMs,
+        });
+      } else {
+        setStorageTestResult({
+          success: false,
+          message: data.error || 'Connection verification failed',
+        });
+      }
+    } catch (err: any) {
+      setStorageTestResult({
+        success: false,
+        message: err.message || 'Network test failed',
+      });
+    } finally {
+      setTestingStorage(false);
     }
   };
 
@@ -321,6 +366,25 @@ export default function DeveloperConsolePage() {
             <span>Feature Flags</span>
             <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-[10px] font-mono text-emerald-300">
               {enabledCount}/{FEATURE_REGISTRY.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('storage')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'storage'
+                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm'
+                : 'bg-white/[0.02] text-slate-400 hover:text-slate-200 border border-white/5'
+            }`}
+          >
+            <HardDrive className="w-3.5 h-3.5" />
+            <span>Storage & Supabase</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+              config?.storageProvider === 'supabase'
+                ? 'bg-emerald-500/20 text-emerald-300'
+                : 'bg-amber-500/20 text-amber-300'
+            }`}>
+              {config?.storageProvider === 'supabase' ? 'Supabase' : 'Local'}
             </span>
           </button>
 
@@ -643,6 +707,231 @@ export default function DeveloperConsolePage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 2. Cloud Storage & Supabase Tab */}
+      {activeTab === 'storage' && (
+        <div className="max-w-3xl mx-auto space-y-5 p-5 sm:p-6 rounded-2xl bg-slate-900/60 border border-white/10 shadow-2xl">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/10 rounded-xl text-blue-400 border border-blue-500/20">
+                <HardDrive className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white tracking-tight">
+                  Cloud Storage &amp; Supabase Engine
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Manage persistent object storage for AI photogrammetry captures, 3D models, and architectural plans.
+                </p>
+              </div>
+            </div>
+
+            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider border ${
+              config?.storageProvider === 'supabase'
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+            }`}>
+              {config?.storageProvider === 'supabase' ? '🟢 Supabase Active' : '🟡 Local Active'}
+            </span>
+          </div>
+
+          {/* Provider Selection Cards */}
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-slate-300">
+              Active Storage Provider
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Supabase Option */}
+              <div
+                onClick={() => setConfig({ ...config, storageProvider: 'supabase' })}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  config?.storageProvider === 'supabase'
+                    ? 'bg-blue-600/15 border-blue-500/60 ring-1 ring-blue-500/30'
+                    : 'bg-white/[0.02] border-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full border ${
+                      config?.storageProvider === 'supabase'
+                        ? 'bg-blue-500 border-blue-400'
+                        : 'border-slate-500'
+                    }`} />
+                    <span className="text-xs font-bold text-white">Supabase Cloud Storage</span>
+                  </div>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-mono">
+                    PRODUCTION READY
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Direct browser uploads bypass Vercel&apos;s 4.5MB limit. Zero ephemeral disk loss. Durable worldwide cloud asset delivery.
+                </p>
+              </div>
+
+              {/* Local Storage Option */}
+              <div
+                onClick={() => setConfig({ ...config, storageProvider: 'local' })}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  config?.storageProvider === 'local'
+                    ? 'bg-amber-600/15 border-amber-500/60 ring-1 ring-amber-500/30'
+                    : 'bg-white/[0.02] border-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full border ${
+                      config?.storageProvider === 'local'
+                        ? 'bg-amber-500 border-amber-400'
+                        : 'border-slate-500'
+                    }`} />
+                    <span className="text-xs font-bold text-white">Local Filesystem</span>
+                  </div>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md font-mono">
+                    DEV ONLY
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Saves assets directly to <code>storage/scans</code> on your machine. Not persistent across Vercel serverless function invocations.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Supabase Credentials Configuration Form */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider text-slate-300">
+              Supabase Project Credentials
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Supabase Project URL <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://your-project-id.supabase.co"
+                  value={config?.supabaseConfig?.url || ''}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      supabaseConfig: { ...config?.supabaseConfig, url: e.target.value },
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-slate-800/80 border border-white/10 rounded-xl text-xs text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-blue-500/60"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Anon / Public API Key <span className="text-rose-400">*</span>
+                  <span className="text-[10px] text-slate-400 font-normal ml-1.5">(Used for direct browser uploads)</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  value={config?.supabaseConfig?.anonKey || ''}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      supabaseConfig: { ...config?.supabaseConfig, anonKey: e.target.value },
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-slate-800/80 border border-white/10 rounded-xl text-xs text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-blue-500/60"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Service Role Key <span className="text-rose-400">*</span>
+                  <span className="text-[10px] text-slate-400 font-normal ml-1.5">(Backend deletion &amp; bucket admin)</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  value={config?.supabaseConfig?.serviceRoleKey || ''}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      supabaseConfig: { ...config?.supabaseConfig, serviceRoleKey: e.target.value },
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-slate-800/80 border border-white/10 rounded-xl text-xs text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-blue-500/60"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Storage Bucket Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="real-estate-assets"
+                  value={config?.supabaseConfig?.bucket || 'real-estate-assets'}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      supabaseConfig: { ...config?.supabaseConfig, bucket: e.target.value },
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-slate-800/80 border border-white/10 rounded-xl text-xs text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-blue-500/60"
+                />
+              </div>
+            </div>
+
+            {/* Test Connection Feedback */}
+            {storageTestResult && (
+              <div
+                className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+                  storageTestResult.success
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  {storageTestResult.success ? (
+                    <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                  )}
+                  <span>{storageTestResult.message}</span>
+                </div>
+                {storageTestResult.latencyMs && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 flex-shrink-0">
+                    {storageTestResult.latencyMs}ms
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Storage Actions Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/10">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                loading={testingStorage}
+                onClick={handleTestStorage}
+                className="text-xs"
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1.5 text-blue-400" />
+                <span>Test Connection &amp; Ensure Bucket</span>
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                loading={saving}
+                onClick={handleSaveConfig}
+                className="text-xs"
+              >
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+                <span>Save Storage Provider Settings</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}
