@@ -181,10 +181,9 @@ export class QualityEngine {
       }
     }
 
-    // Decision logic
-    const isAccepted =
-      warnings.length === 0 ||
-      (warnings.length === 1 && warnings[0].startsWith('Negligible') === false);
+    // Decision logic: accept frame if no hard warnings (blur, velocity, lighting)
+    const hardWarnings = warnings.filter((w) => !w.startsWith('Negligible'));
+    const isAccepted = hardWarnings.length === 0;
 
     let guidanceMessage = 'Scanning active: Excellent motion & clarity';
     if (warnings.length > 0) {
@@ -192,7 +191,7 @@ export class QualityEngine {
     }
 
     return {
-      isAccepted: isAccepted && warnings.length === 0,
+      isAccepted,
       blurScore,
       meanLuminance,
       motionVelocity: params.motionVelocity,

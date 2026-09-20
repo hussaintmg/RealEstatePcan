@@ -695,14 +695,14 @@ export const RealEstate3DViewer: React.FC<RealEstate3DViewerProps> = ({
         </button>
       </div>
 
-      {/* Bottom Camera Bookmarks Bar */}
+      {/* Camera Bookmarks Bar (Bottom Center) */}
       {bookmarks.length > 0 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center space-x-2 bg-black/70 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 shadow-2xl z-20 max-w-[90%] overflow-x-auto">
+        <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex items-center space-x-1.5 sm:space-x-2 bg-black/80 backdrop-blur-md p-1 sm:p-1.5 rounded-2xl border border-white/10 shadow-2xl z-20 max-w-[92%] overflow-x-auto">
           {bookmarks.map((bm) => (
             <button
               key={bm.id}
               onClick={() => lerpCamera(bm.position, bm.target, bm.fov)}
-              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-blue-600/30 hover:border-blue-500/50 border border-white/10 text-xs font-semibold text-slate-200 hover:text-white transition-all whitespace-nowrap"
+              className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-white/5 hover:bg-blue-600/30 hover:border-blue-500/50 border border-white/10 text-[11px] sm:text-xs font-semibold text-slate-200 hover:text-white transition-all whitespace-nowrap cursor-pointer"
             >
               {bm.label}
             </button>
@@ -710,13 +710,13 @@ export const RealEstate3DViewer: React.FC<RealEstate3DViewerProps> = ({
         </div>
       )}
 
-      {/* Floor Isolation Selector (Bottom Left) */}
+      {/* Floor Isolation Selector (Bottom Left or Stacked Above Bookmarks to prevent collision) */}
       {floorMappings.length > 0 && (
-        <div className="absolute bottom-4 left-4 z-20 flex items-center space-x-1 bg-black/70 backdrop-blur-md p-1.5 rounded-xl border border-white/10">
-          <Layers className="w-3.5 h-3.5 text-blue-400 ml-1" />
+        <div className={`absolute ${bookmarks.length > 0 ? 'bottom-14 sm:bottom-16' : 'bottom-3 sm:bottom-4'} left-3 sm:left-4 z-20 flex items-center space-x-1 bg-black/80 backdrop-blur-md p-1 sm:p-1.5 rounded-xl border border-white/10 max-w-[90%] overflow-x-auto`}>
+          <Layers className="w-3.5 h-3.5 text-blue-400 ml-1 shrink-0" />
           <button
             onClick={() => handleIsolateFloor(null)}
-            className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all ${
+            className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
               selectedFloor === null ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -726,7 +726,7 @@ export const RealEstate3DViewer: React.FC<RealEstate3DViewerProps> = ({
             <button
               key={fm.nodeName}
               onClick={() => handleIsolateFloor(fm.nodeName)}
-              className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all ${
+              className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
                 selectedFloor === fm.nodeName ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -760,7 +760,7 @@ export const RealEstate3DViewer: React.FC<RealEstate3DViewerProps> = ({
 
       {/* Active Hotspot Modal */}
       {activeHotspot && (
-        <div className="absolute top-16 left-6 max-w-xs bg-[#101522]/95 backdrop-blur-xl border border-white/20 p-4 rounded-2xl shadow-2xl z-30 space-y-2 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute top-14 sm:top-16 left-3 right-3 sm:left-6 sm:right-auto max-w-xs bg-[#101522]/95 backdrop-blur-xl border border-white/20 p-4 rounded-2xl shadow-2xl z-30 space-y-2 animate-in fade-in zoom-in-95 duration-150">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-white">{activeHotspot.label || activeHotspot.title}</span>
             <button onClick={() => setActiveHotspot(null)} className="text-slate-400 hover:text-white">
@@ -778,7 +778,7 @@ export const RealEstate3DViewer: React.FC<RealEstate3DViewerProps> = ({
 
       {/* Selected Unit Details Modal */}
       {activeUnit && (
-        <div className="absolute top-16 left-6 max-w-sm w-full bg-[#0d121f]/95 backdrop-blur-2xl border border-white/20 p-5 rounded-2xl shadow-2xl z-30 space-y-4 animate-in fade-in slide-in-from-left-4 duration-200">
+        <div className="absolute top-14 sm:top-16 left-3 right-3 sm:left-6 sm:right-auto sm:max-w-sm bg-[#0d121f]/95 backdrop-blur-2xl border border-white/20 p-4 sm:p-5 rounded-2xl shadow-2xl z-30 space-y-3 sm:space-y-4 animate-in fade-in slide-in-from-left-4 duration-200">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center space-x-2">

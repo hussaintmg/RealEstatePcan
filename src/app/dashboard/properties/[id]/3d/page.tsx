@@ -50,6 +50,8 @@ export default function Property3DStudioPage() {
 
   // Active Inspector Tab
   const [activeTab, setActiveTab] = useState<'hierarchy' | 'camera' | 'mappings' | 'hotspots' | 'environment'>('hierarchy');
+  // Mobile studio view switcher ('viewport' | 'inspector')
+  const [mobileStudioView, setMobileStudioView] = useState<'viewport' | 'inspector'>('viewport');
 
   // 3D Experience State
   const [experience, setExperience] = useState({
@@ -241,30 +243,30 @@ export default function Property3DStudioPage() {
   return (
     <div className="min-h-screen bg-[#070a0f] text-white flex flex-col font-sans">
       {/* Top Header */}
-      <header className="h-16 border-b border-white/10 bg-[#0d121f]/95 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center space-x-3">
+      <header className="min-h-16 py-2.5 sm:py-0 border-b border-white/10 bg-[#0d121f]/95 backdrop-blur-md px-3 sm:px-6 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
           <Link
             href="/dashboard/properties"
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all"
+            className="p-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer"
             title="Back to Properties"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <Link
             href="/dashboard"
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-all border border-white/10"
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-all border border-white/10 shrink-0"
             title="Return to Main Dashboard"
           >
             <LayoutDashboard className="w-3.5 h-3.5 text-blue-400" />
             <span>Dashboard</span>
           </Link>
-          <div className="flex items-center space-x-3">
-            <Compass className="w-5 h-5 text-blue-400 animate-spin-slow" />
-            <div>
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+            <Compass className="w-4 sm:w-5 h-4 sm:h-5 text-blue-400 animate-spin-slow shrink-0" />
+            <div className="min-w-0">
               <div className="flex items-center space-x-2">
-                <h1 className="text-sm font-bold text-white tracking-wide">PlayCanvas 3D Studio</h1>
+                <h1 className="text-xs sm:text-sm font-bold text-white tracking-wide truncate">PlayCanvas 3D Studio</h1>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
+                  className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shrink-0 ${
                     experience.status === 'published'
                       ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                       : experience.status === 'configuration_required'
@@ -272,31 +274,31 @@ export default function Property3DStudioPage() {
                       : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                   }`}
                 >
-                  {experience.status} (v{experience.currentVersion})
+                  v{experience.currentVersion}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400">Configure Spatial Walkthrough, Floor/Unit Mappings & Hotspots</p>
+              <p className="hidden sm:block text-[10px] text-slate-400 truncate">Configure Walkthrough, Floor/Unit Mappings & Hotspots</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           {saveSuccess && (
-            <span className="inline-flex items-center space-x-1.5 text-xs text-emerald-400 font-semibold px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in fade-in duration-200">
+            <span className="hidden sm:inline-flex items-center space-x-1 text-xs text-emerald-400 font-semibold px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Changes Saved</span>
+              <span>Saved</span>
             </span>
           )}
 
           {publishMessage && (
-            <span className="inline-flex items-center space-x-1.5 text-xs text-emerald-400 font-semibold px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in fade-in duration-200">
+            <span className="hidden sm:inline-flex items-center space-x-1 text-xs text-emerald-400 font-semibold px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>{publishMessage}</span>
             </span>
           )}
 
           {errorMessage && (
-            <span className="inline-flex items-center space-x-1.5 text-xs text-rose-400 font-semibold px-3 py-1 bg-rose-500/10 border border-rose-500/20 rounded-xl animate-in fade-in duration-200">
+            <span className="hidden sm:inline-flex items-center space-x-1 text-xs text-rose-400 font-semibold px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 rounded-xl">
               <ShieldAlert className="w-3.5 h-3.5" />
               <span>{errorMessage}</span>
             </span>
@@ -305,57 +307,79 @@ export default function Property3DStudioPage() {
           {/* Mode Switcher */}
           <button
             onClick={() => setViewerMode(viewerMode === 'editor' ? 'preview' : 'editor')}
-            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+            className={`inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
               viewerMode === 'preview'
                 ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                 : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
             }`}
+            title={viewerMode === 'preview' ? 'Exit Visitor Preview' : 'Preview as Visitor'}
           >
             <Eye className="w-3.5 h-3.5" />
-            <span>{viewerMode === 'preview' ? 'Exit Visitor Preview' : 'Preview as Visitor'}</span>
+            <span className="hidden sm:inline">{viewerMode === 'preview' ? 'Exit Preview' : 'Preview'}</span>
           </button>
 
           {/* Save Button */}
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-white/10 hover:bg-white/15 text-white border border-white/20 rounded-xl text-xs font-semibold transition-all"
+            className="inline-flex items-center space-x-1 px-3 sm:px-3.5 py-1.5 bg-white/10 hover:bg-white/15 text-white border border-white/20 rounded-xl text-xs font-semibold transition-all cursor-pointer"
           >
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            <span>Save Draft</span>
+            <span>Save</span>
           </button>
 
           {/* Publish Button */}
           <button
             onClick={handlePublish}
             disabled={publishing || !experience.modelUrl}
-            className="inline-flex items-center space-x-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/30 transition-all"
+            className="inline-flex items-center space-x-1 px-3.5 sm:px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
           >
             {publishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-            <span>Publish 3D Experience</span>
+            <span className="hidden sm:inline">Publish 3D</span>
+            <span className="sm:hidden">Publish</span>
           </button>
         </div>
       </header>
 
+      {/* Mobile Mode Switcher (< lg screens) */}
+      <div className="lg:hidden p-2 bg-[#0d121f] border-b border-white/10 flex gap-2">
+        <button
+          onClick={() => setMobileStudioView('viewport')}
+          className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
+            mobileStudioView === 'viewport' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          3D Viewport
+        </button>
+        <button
+          onClick={() => setMobileStudioView('inspector')}
+          className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
+            mobileStudioView === 'inspector' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Inspector Settings ({activeTab})
+        </button>
+      </div>
+
       {/* Main Spatial Studio Area */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Center / Left: 3D Viewport */}
-        <div className="flex-1 p-6 flex flex-col space-y-4 overflow-hidden">
+        <div className={`flex-1 p-3 sm:p-6 flex flex-col space-y-4 overflow-hidden ${mobileStudioView === 'inspector' ? 'hidden lg:flex' : 'flex'}`}>
           {/* Uploader Card if no model uploaded or replacement desired */}
           {(!experience.modelUrl || uploading || uploadError) && (
-            <div className="p-4 bg-[#101522] border border-dashed border-blue-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="p-3.5 sm:p-4 bg-[#101522] border border-dashed border-blue-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
               <div className="flex items-center space-x-3">
-                <UploadCloud className="w-8 h-8 text-blue-400 flex-shrink-0" />
+                <UploadCloud className="w-7 h-7 sm:w-8 sm:h-8 text-blue-400 flex-shrink-0" />
                 <div>
                   <h4 className="text-xs font-bold text-white">Upload Architectural GLB Container</h4>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[10px] sm:text-[11px] text-slate-400">
                     Supports binary glTF 2.0 (.glb) packaging geometry, materials, and textures up to 100MB.
                   </p>
                   {uploadError && <p className="text-[11px] text-rose-400 mt-1">{uploadError}</p>}
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 shrink-0">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -368,17 +392,17 @@ export default function Property3DStudioPage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/30 transition-all flex items-center space-x-1.5"
+                  className="px-3.5 sm:px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/30 transition-all flex items-center space-x-1.5 cursor-pointer"
                 >
                   {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
-                  <span>{uploading ? 'Validating & Processing...' : 'Select GLB File'}</span>
+                  <span>{uploading ? 'Validating...' : 'Select GLB'}</span>
                 </button>
               </div>
             </div>
           )}
 
           {/* Interactive PlayCanvas Viewport */}
-          <div className="flex-1 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-black/40 min-h-[460px]">
+          <div className="flex-1 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-black/40 min-h-[380px] sm:min-h-[460px]">
             <RealEstate3DViewer
               modelUrl={experience.modelUrl}
               title={experience.title}
@@ -398,7 +422,7 @@ export default function Property3DStudioPage() {
         </div>
 
         {/* Right Configuration Inspector */}
-        <div className="w-full lg:w-96 border-l border-white/10 bg-[#0d121f] flex flex-col h-full z-10">
+        <div className={`w-full lg:w-96 border-l border-white/10 bg-[#0d121f] flex flex-col h-full z-10 ${mobileStudioView === 'viewport' ? 'hidden lg:flex' : 'flex'}`}>
           {/* Top Inspector Navigation Tabs */}
           <div className="flex border-b border-white/10 p-2 gap-1 bg-white/[0.02]">
             <button

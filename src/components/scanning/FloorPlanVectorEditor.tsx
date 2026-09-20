@@ -116,43 +116,43 @@ export const FloorPlanVectorEditor: React.FC<FloorPlanVectorEditorProps> = ({
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
       {/* Top Toolbar */}
-      <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-slate-900/80 border-b border-slate-800 gap-4">
-        <div className="flex items-center gap-3">
-          <Edit3 className="w-5 h-5 text-blue-400" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-slate-900/80 border-b border-slate-800 gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <Edit3 className="w-4 sm:w-5 h-4 sm:h-5 text-blue-400 shrink-0" />
           <div>
-            <h3 className="text-base font-semibold text-white">Interactive 2D Architectural Floor Plan</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-sm sm:text-base font-semibold text-white">2D Architectural Floor Plan</h3>
+            <p className="text-[11px] sm:text-xs text-slate-400">
               Total Area: <span className="text-blue-400 font-medium">{data.totalAreaSqFeet} sq ft</span> ({data.totalAreaSqMeters} m²)
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-slate-800 rounded-lg p-1">
+        <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3">
+          <div className="flex items-center bg-slate-800 rounded-lg p-0.5 sm:p-1 border border-slate-700">
             <button
               onClick={() => setScale((s) => Math.max(s - 0.2, 0.6))}
-              className="p-1.5 hover:bg-slate-700 rounded text-slate-300"
+              className="p-1 sm:p-1.5 hover:bg-slate-700 rounded text-slate-300 transition-colors"
               title="Zoom Out"
             >
-              <ZoomOut className="w-4 h-4" />
+              <ZoomOut className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
             </button>
-            <span className="px-2 text-xs font-mono text-slate-300">{Math.round(scale * 100)}%</span>
+            <span className="px-1.5 sm:px-2 text-[11px] sm:text-xs font-mono text-slate-300">{Math.round(scale * 100)}%</span>
             <button
               onClick={() => setScale((s) => Math.min(s + 0.2, 2.0))}
-              className="p-1.5 hover:bg-slate-700 rounded text-slate-300"
+              className="p-1 sm:p-1.5 hover:bg-slate-700 rounded text-slate-300 transition-colors"
               title="Zoom In"
             >
-              <ZoomIn className="w-4 h-4" />
+              <ZoomIn className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
             </button>
           </div>
 
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-xs sm:text-sm font-semibold transition-colors cursor-pointer shrink-0"
           >
-            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save Revisions
+            {saving ? <RefreshCw className="w-3.5 sm:w-4 h-3.5 sm:h-4 animate-spin" /> : <Save className="w-3.5 sm:w-4 h-3.5 sm:h-4" />}
+            <span>Save Plan</span>
           </button>
         </div>
       </div>

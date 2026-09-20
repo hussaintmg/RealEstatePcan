@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import ThreeSpatialViewer from '@/components/scanning/ThreeSpatialViewer';
-import { Box, Layers, Share2, Info, CheckCircle } from 'lucide-react';
+import { Box, Layers, Share2, Info, CheckCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 
 export default function StandaloneViewerPage() {
   const params = useParams();
+  const router = useRouter();
   const scanId = params?.scanId as string;
 
   const [scan, setScan] = useState<any | null>(null);
@@ -46,6 +47,7 @@ export default function StandaloneViewerPage() {
   if (loading) {
     return (
       <div className="w-screen h-screen bg-slate-950 flex items-center justify-center text-slate-400">
+        <RefreshCw className="w-6 h-6 animate-spin text-blue-500 mr-3" />
         Loading 3D Spatial Walkthrough...
       </div>
     );
@@ -60,39 +62,51 @@ export default function StandaloneViewerPage() {
 
   return (
     <div className="relative w-screen h-screen bg-slate-950 overflow-hidden flex flex-col text-white font-sans">
-      {/* Top Floating Brand & Controls Bar */}
-      <header className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-3 bg-slate-900/80 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-slate-800 shadow-xl">
-          <Box className="w-5 h-5 text-blue-400" />
-          <div>
-            <h1 className="text-sm font-semibold">{scan?.title || '3D Virtual Walkthrough'}</h1>
-            <p className="text-[11px] text-slate-400">
-              Interactive Spatial Model • {rooms.length} Rooms
+      {/* Top Floating Brand & Controls Bar (Z-20) */}
+      <header className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 z-20 flex items-center justify-between pointer-events-none gap-2">
+        <div className="pointer-events-auto flex items-center gap-2 sm:gap-3 bg-slate-900/90 backdrop-blur-md px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl border border-slate-800 shadow-xl max-w-[70%] sm:max-w-md">
+          <button
+            onClick={() => router.back()}
+            className="p-1 sm:p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+            title="Go back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <Box className="w-4 sm:w-5 h-4 sm:h-5 text-blue-400 shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-xs sm:text-sm font-semibold truncate text-white">{scan?.title || '3D Virtual Walkthrough'}</h1>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
+              3D Walkthrough • {rooms.length} Rooms
             </p>
           </div>
         </div>
 
         <button
           onClick={handleShare}
-          className="pointer-events-auto flex items-center gap-2 px-3.5 py-2 bg-slate-900/80 backdrop-blur-md hover:bg-slate-850 rounded-xl border border-slate-800 text-xs text-slate-300 font-medium transition-colors shadow-lg cursor-pointer"
+          className="pointer-events-auto flex items-center gap-1.5 px-3 py-2 bg-slate-900/90 backdrop-blur-md hover:bg-slate-800 rounded-xl border border-slate-800 text-xs text-slate-300 font-medium transition-all shadow-lg cursor-pointer shrink-0"
         >
           {copied ? (
             <>
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <span>Link Copied!</span>
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Link Copied!</span>
             </>
           ) : (
             <>
-              <Share2 className="w-4 h-4 text-blue-400" />
-              <span>Share Walkthrough</span>
+              <Share2 className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden sm:inline">Share</span>
             </>
           )}
         </button>
       </header>
 
-      {/* Main Fullscreen Three.js Spatial Viewer */}
+      {/* Main Fullscreen Three.js Spatial Viewer (with topOffset='top-16 sm:top-20' to completely prevent collision with header) */}
       <div className="w-full h-full">
-        <ThreeSpatialViewer scanId={scanId} rooms={formattedRooms} />
+        <ThreeSpatialViewer
+          scanId={scanId}
+          rooms={formattedRooms}
+          topOffset="top-16 sm:top-20"
+          className="h-full !rounded-none !border-0"
+        />
       </div>
     </div>
   );

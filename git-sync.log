@@ -1,0 +1,14 @@
+SCRIPT STARTED AT 2026-09-20T15:51:47.560Z
+Executing git status:
+ M src/app/dashboard/properties/[id]/3d/page.tsx
+ M src/app/dashboard/properties/[id]/scans/capture/page.tsx
+ M src/app/dashboard/properties/[id]/scans/page.tsx
+ M src/app/viewer/[scanId]/page.tsx
+ M src/components/3d/RealEstate3DViewer.tsx
+ M src/components/scanning/FloorPlanVectorEditor.tsx
+ M src/components/scanning/ThreeSpatialViewer.tsx
+ M src/lib/scanning/qualityEngine.ts
+?? git-sync.log
+?? scripts/git-sync.js
+
+Executing git add:
