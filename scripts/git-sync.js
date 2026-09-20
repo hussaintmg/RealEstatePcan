@@ -27,7 +27,7 @@ try {
   log('Add completed.');
 
   log('Executing git commit:');
-  execSync('git commit -m "fix: resolve scan upload hash slice, plans page button collision, resume flow, and mobile responsiveness"', { env });
+  execSync('git commit -m "feat: add 1-click instant demo login, properties testing hub, seed demo API, and fix next build type errors"', { env });
   log('Commit completed.');
 
   log('Executing git push origin main:');

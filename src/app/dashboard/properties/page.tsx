@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { DataGrid, ColumnDef } from '@/components/datagrid/DataGrid';
 import { DirectUploader } from '@/components/common/DirectUploader';
-import { Plus, Building, Check, Camera, Layers, Eye, ArrowRight, Sparkles } from 'lucide-react';
+import { Plus, Building, Check, Camera, Layers, Eye, ArrowRight, Sparkles, Zap, RotateCcw, X, Compass, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -36,6 +36,10 @@ export default function PropertiesDashboardPage() {
   });
   const [saving, setSaving] = useState(false);
 
+  const [seeding, setSeeding] = useState(false);
+  const [showTestGuide, setShowTestGuide] = useState(true);
+  const [seedSuccessMsg, setSeedSuccessMsg] = useState<string | null>(null);
+
   const fetchProperties = useCallback(async () => {
     try {
       const params = new URLSearchParams({
@@ -58,6 +62,24 @@ export default function PropertiesDashboardPage() {
       setProperties([]);
     }
   }, [currentPage, search, statusFilter, sortKey, sortDir]);
+
+  const handleSeedDemo = async () => {
+    setSeeding(true);
+    setSeedSuccessMsg(null);
+    try {
+      const res = await fetch('/api/properties/seed-demo', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setSeedSuccessMsg('Demo properties and scans ready for testing!');
+        await fetchProperties();
+        setTimeout(() => setSeedSuccessMsg(null), 4000);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   useEffect(() => {
     fetchProperties();
@@ -210,7 +232,22 @@ export default function PropertiesDashboardPage() {
           { label: 'Properties' },
         ]}
         primaryAction={
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleSeedDemo}
+              disabled={seeding}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-bold rounded-xl shadow-md shadow-amber-600/30 transition-all border border-amber-400/40 disabled:opacity-50 active:scale-95"
+              title="Ensure all 3 demo properties with ready, queued, and failed scans exist for testing"
+            >
+              {seeding ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Zap className="w-3.5 h-3.5 text-amber-200 fill-amber-200" />
+              )}
+              <span>{seeding ? 'Seeding Demo Data...' : '⚡ Seed Demo Scans'}</span>
+            </button>
+
             {properties.length > 0 && (
               <Link
                 href={`/dashboard/properties/${properties[0]._id}/scans/capture`}
@@ -231,6 +268,110 @@ export default function PropertiesDashboardPage() {
           </div>
         }
       />
+
+      {/* Success Notification Banner */}
+      {seedSuccessMsg && (
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-xs text-emerald-300 flex items-center justify-between shadow-lg animate-in fade-in">
+          <div className="flex items-center space-x-2">
+            <Check className="w-4 h-4 text-emerald-400" />
+            <span className="font-semibold">{seedSuccessMsg}</span>
+          </div>
+          <button onClick={() => setSeedSuccessMsg(null)} className="text-slate-400 hover:text-white">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* 🎯 Quick Testing Hub for Reviewer & Client */}
+      {showTestGuide && (
+        <div className="p-4 sm:p-5 bg-[#0e1424]/90 backdrop-blur-xl border border-blue-500/20 rounded-2xl space-y-3 relative shadow-xl overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] pointer-events-none" />
+
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center space-x-2">
+              <div className="p-1.5 bg-blue-600/20 rounded-lg text-blue-400 border border-blue-500/30">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <h2 className="text-xs sm:text-sm font-bold text-white tracking-wide">
+                Interactive Testing Hub — Direct Feature Shortcuts
+              </h2>
+            </div>
+            <button
+              onClick={() => setShowTestGuide(false)}
+              className="text-slate-400 hover:text-white p-1 rounded transition-colors"
+              title="Dismiss Guide"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed max-w-4xl relative z-10">
+            Click any action below to test the complete photogrammetry &amp; 3D visualization pipeline:
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 relative z-10 text-xs">
+            {properties.length > 0 ? (
+              <>
+                <Link
+                  href={`/dashboard/properties/${properties[0]._id}/scans/capture`}
+                  className="p-2.5 rounded-xl bg-blue-950/40 hover:bg-blue-900/40 border border-blue-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
+                >
+                  <div className="flex items-center space-x-1.5 text-blue-400 font-bold text-[11px]">
+                    <Camera className="w-3.5 h-3.5 shrink-0" />
+                    <span>1. Camera Scanner</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 leading-tight">
+                    Live camera stream + photo roll batch upload
+                  </span>
+                </Link>
+
+                <Link
+                  href={`/dashboard/properties/${properties[0]._id}/scans`}
+                  className="p-2.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/40 border border-purple-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
+                >
+                  <div className="flex items-center space-x-1.5 text-purple-400 font-bold text-[11px]">
+                    <Layers className="w-3.5 h-3.5 shrink-0" />
+                    <span>2. Plans &amp; Resume</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 leading-tight">
+                    Resume queued scan or retry failed scan
+                  </span>
+                </Link>
+
+                <Link
+                  href={`/dashboard/properties/${properties[0]._id}/3d`}
+                  className="p-2.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
+                >
+                  <div className="flex items-center space-x-1.5 text-emerald-400 font-bold text-[11px]">
+                    <Eye className="w-3.5 h-3.5 shrink-0" />
+                    <span>3. 3D Studio</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 leading-tight">
+                    Dollhouse, floor isolation &amp; bookmarks
+                  </span>
+                </Link>
+
+                <Link
+                  href={`/viewer/${properties[0]._id}`}
+                  className="p-2.5 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/40 border border-indigo-500/30 flex flex-col gap-1 transition-all group hover:scale-[1.02]"
+                >
+                  <div className="flex items-center space-x-1.5 text-indigo-400 font-bold text-[11px]">
+                    <Compass className="w-3.5 h-3.5 shrink-0" />
+                    <span>4. Fullscreen 3D</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 leading-tight">
+                    Zero-overlap spatial 3D inspection
+                  </span>
+                </Link>
+              </>
+            ) : (
+              <div className="col-span-4 py-2 text-center text-slate-400 text-xs">
+                Click <strong className="text-amber-400">⚡ Seed Demo Scans</strong> above to generate test listings immediately!
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <DataGrid
         title="Active Catalog"

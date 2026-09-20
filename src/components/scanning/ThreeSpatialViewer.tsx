@@ -319,7 +319,7 @@ export const ThreeSpatialViewer: React.FC<ThreeSpatialViewerProps> = ({
 
     // 11. Complete Resource Disposal on Unmount
     return () => {
-      cancelAnimationFrame(animFrameId);
+      cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
       renderer.domElement.removeEventListener('webglcontextlost', handleContextLost);
       renderer.domElement.removeEventListener('webglcontextrestored', handleContextRestored);

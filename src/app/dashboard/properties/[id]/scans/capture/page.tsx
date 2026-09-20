@@ -404,7 +404,7 @@ export default function CameraCapturePage() {
     try {
       if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
         // Create an isolated ArrayBuffer containing ONLY the chunk bytes
-        const exactAb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        const exactAb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
         const hashBuffer = await window.crypto.subtle.digest('SHA-256', exactAb);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
